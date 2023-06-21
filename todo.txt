@@ -1,0 +1,10 @@
+# TODO: 
+
+Newfile: Descriptive stats
+
+Newfile: ARMA-ARCH estimation
+
+Multivariate
+Change "model" dict from single modelname to model[key][comp] nested dict
+
+Think about how to port best HMM data and best ARMA-ARCH into a common comparison.
