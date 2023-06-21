@@ -6,3 +6,4 @@ hmmlearn
 notebook
 yfinance
 arch
+seaborn
