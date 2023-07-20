@@ -1,10 +1,32 @@
 # TODO: 
+Tiene sentido trabajar con otras medidas de vol?
+Abs return
+Square returns
+
+
 
 Newfile: Descriptive stats
 
-Newfile: ARMA-ARCH estimation
 
-Multivariate
-Change "model" dict from single modelname to model[key][comp] nested dict
+ARMA-ARCH estimation
+Revisar que pasa con p=0
+Revisar rescaling: sirve log_rets*100? Luego me deja un modelo malentrenado?
 
+
+
+Multivariate HMM
+> Change "model" dict from single modelname to model[key][comp] nested dict
+> Create prediction dict to be pickled
+> Create a log for each model, DO NOT PRINT
+> Decide what to do with models that do not converge
+
+
+Newfile: Model comparer
 Think about how to port best HMM data and best ARMA-ARCH into a common comparison.
+
+Posiblemente requiera armar una funcion de chequeo que use model.monitor==True para chequear convergencia del modelo.  
+Recien ahi rankear por AIC&BIC
+https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.base.ConvergenceMonitor
+
+Newfile:README
+Hacer al final de la tesis
