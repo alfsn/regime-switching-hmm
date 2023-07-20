@@ -5,3 +5,5 @@ matplotlib
 hmmlearn
 notebook
 yfinance
+arch
+seaborn

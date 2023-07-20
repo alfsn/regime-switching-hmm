@@ -1,0 +1,11 @@
+DEVLOG
+
+#### 20/06/23  
+Quise usar la funcion hmm.GaussianHMM. Sin embargo, hay un issue con el startprob_prior:
+>ValueError                                Traceback (most recent call last)  
+>ValueError: startprob_ must sum to 1 (got nan)
+
+Esta issue esta trackeada acá ("Looks like there is some issue...")
+https://stackoverflow.com/questions/18796658/scikit-learn-gaussian-hmm-valueerror-startprob-must-sum-to-1-0
+pero pide modificar el paquete hmm.base para hacer un quickfix de un -1.0 que quedó en el código. Voy a buscar de solucionar esto con el paquete estándar.   
+Por lo tanto, no voy a usar el parámetro startprob_prior.
