@@ -27,6 +27,12 @@ Gap identification
 Description of data sources
 Data collection methods
 Data preprocessing techniques
+
+> Tiene sentido trabajar con otras medidas de vol?
+Abs return
+Square returns
+Newfile: Descriptive stats
+
 Stationarity tests
 Volatility estimation
 
@@ -35,7 +41,27 @@ Volatility estimation
 Detailed explanation of VAR, ARMA, ARCH, and related models
 Detailed explanation of Hidden Markov Models (HMMs)
 Model parameter estimation
+> ARMA-ARCH estimation
+Revisar que pasa con p=0
+Revisar rescaling: sirve log_rets*100? Luego me deja un modelo malentrenado?
+
+> Multivariate HMM
+> Change "model" dict from single modelname to model[key][comp] nested dict
+> Create prediction dict to be pickled
+> Create a log for each model, DO NOT PRINT
+> Decide what to do with models that do not converge
+
+
 Model selection criteria
+
+> TODO:
+Newfile: Model comparer
+Think about how to port best HMM data and best ARMA-ARCH into a common comparison.
+
+>Posiblemente requiera armar una funcion de chequeo que use model.monitor==True para chequear convergencia del modelo.  
+Recien ahi rankear por AIC&BIC
+https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.base.ConvergenceMonitor
+
 Hybrid models (if applicable)
 
 ### Chapter 5: Empirical Analysis
@@ -57,6 +83,7 @@ Sensitivity analysis
 
 Robustness tests (e.g., different data periods, alternative model specifications)
 Sensitivity to parameter choices
+> Attempt to force same day coefficients in VAR so that current day stock returns and vol have no effect on current day USD (SVAR)
 Monte Carlo simulations (if relevant)
 
 ### Chapter 8: Discussion
