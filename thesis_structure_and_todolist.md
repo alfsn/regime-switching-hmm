@@ -83,6 +83,7 @@ Sensitivity analysis
 
 Robustness tests (e.g., different data periods, alternative model specifications)
 Sensitivity to parameter choices
+> Attempt to force same day coefficients in VAR so that current day stock returns and vol have no effect on current day USD (SVAR)
 Monte Carlo simulations (if relevant)
 
 ### Chapter 8: Discussion
