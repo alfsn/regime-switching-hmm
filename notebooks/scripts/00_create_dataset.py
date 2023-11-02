@@ -32,6 +32,7 @@ np.random.seed(42)
 
 
 dataroute=os.path.join("..",  "data")
+dumproute=os.path.join("..",  "dump")
 resultsroute=os.path.join("..",  "results")
 
 
@@ -46,6 +47,14 @@ tickerlist=["^MERV",
             "EDN", "EDN.BA",
             "BMA", "BMA.BA"] 
 # sumar tamb BBAR/BBAR? TEO/TECO2?
+
+
+# In[6]:
+
+
+with open(os.path.join(dumproute, "tickerlist.pickle"), 'wb') as f:
+          pickle.dump(tickerlist, f, protocol=pickle.HIGHEST_PROTOCOL)
+          # es esta la lista que realmente necesito? luego aparecen USD y ^MERV_USD
 
 
 # In[6]:

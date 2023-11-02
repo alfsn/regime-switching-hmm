@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[73]:
+# In[1]:
 
 
 import numpy as np
@@ -18,22 +18,23 @@ import os
 import pickle
 
 
-# In[74]:
+# In[2]:
 
 
 np.random.seed(42)
 
 
-# In[75]:
+# In[41]:
 
 
 dataroute=os.path.join("..",  "data")
+dumproute=os.path.join("..",  "dump")
 resultsroute=os.path.join("..",  "results")
 
 
 # ## Data Retrieval
 
-# In[76]:
+# In[4]:
 
 
 start='2013-01-01'
@@ -50,21 +51,28 @@ with open(filename, 'rb') as handle:
     df=pickle.load(handle)
 
 
-# In[77]:
+# In[5]:
 
 
 df.head(3)
 
 
-# ## VAR Training
+# # VAR Training
 
-# In[78]:
+# ## Lag selection
+# In this instance, we will select an optimal lag length for all models.
+# We will take a single value for all VARs using GGAL.BA, since this is the stock that provides the highest volume in the Argentine Market.
+# 
+# If we require to fit every single var model to its optimum, we will use
+# VAR().fit(maxlags=15, ic='aic')
+
+# In[6]:
 
 
 df.columns
 
 
-# In[79]:
+# In[7]:
 
 
 log_rets_list=[column for column in df.columns if column.endswith("log_rets")]
@@ -72,26 +80,20 @@ vol_list=[column for column in df.columns if column.endswith("vol")]
 simple_rets_list=[column for column in df.columns if (column.endswith("log_rets")) and (column not in log_rets_list)]
 
 
-# In[81]:
+# In[8]:
 
 
 log_rets_list
 
 
-# In[102]:
+# In[9]:
 
 
 components=["USD_log_rets", "USD_gk_vol", "GGAL.BA_log_rets", "GGAL.BA_gk_vol"]
 model=VAR(df[components])
 
 
-# In[105]:
-
-
-
-
-
-# In[106]:
+# In[10]:
 
 
 results_df=pd.DataFrame(columns=["AIC", "BIC", "HQIC"])
@@ -106,67 +108,72 @@ for i in range(1,
     results_df.loc[i,"HQIC"]=result.hqic
 
 
-# In[110]:
+# In[11]:
 
 
 results_df
 
 
-# In[114]:
+# In[12]:
 
 
 order_select=model.select_order(int(np.round(12*(len(df.index)/100.)**(1./4), 0)))
 order_select.summary()
 
 
-# In[115]:
+# In[13]:
 
 
 order_select.selected_orders
 
 
-# In[ ]:
+# The selected order will be, by parsimony, 2 lags.
+
+# In[16]:
 
 
-def plot_close_rets_vol(data, key, comp):
-    model=models[f"{key}_{comp}_model"]
-    prediction=models[f"{key}_{comp}_prediction"]
-    states=set(prediction)
-
-    fig=plt.figure(figsize = (20, 20))
-    plt.tight_layout()
-    plt.title(f"{key} Close, Log returns and intraday Vol\n{comp} states")
-
-    for subplot, var in zip(range(1,4), ["Close", "log_rets", "gk_vol"]):    
-        plt.subplot(3,1,subplot)
-        for i in set(prediction):
-            state = (prediction == i)
-            x = data[key].index[state]
-            y = data[key][var].iloc[state]
-            plt.plot(x, y, '.')
-        plt.legend(states, fontsize=16)
-        
-        plt.grid(True)
-        plt.xlabel("datetime", fontsize=16)
-        plt.ylabel(var, fontsize=16)
-            
-    plt.savefig(os.path.join(resultsroute, "graphs", 
-                             f"{comp}_states", 
-                             f"{key}_model_{comp}.png"))
+orderlag=2
 
 
-# In[ ]:
+# In[22]:
 
 
-for key in data.keys():
-    for comp in comps:
-        plot_close_rets_vol(data, key, comp)
+# importamos la lista de variables
+with open(os.path.join(dumproute, "tickerlist.pickle"), "rb") as f:
+    tickerlist=pickle.load(f)
+    
+tickerlist
 
 
-# ## HMM Selection
+# In[38]:
 
-# Selecting the Number of States in Hidden Markov Models: Pragmatic Solutions Illustrated Using Animal Movement
-# https://sci-hub.st/10.1007/s13253-017-0283-8
+
+var_models = {}
+# Iterate over each stock
+for stock in tickerlist:
+    # Select relevant columns for the VAR model
+    columns = ['USD_log_rets', 'USD_gk_vol', f'{stock}_log_rets', f'{stock}_gk_vol']
+    # Create a new DataFrame for the VAR model
+    var_data = df[columns]
+    # Fit a VAR model for the current stock
+    model = VAR(var_data)
+    results = model.fit(orderlag)
+    # Store the VAR model results in the dictionary
+    var_models[stock] = results
+
+
+# In[39]:
+
+
+var_models["GGAL"].params
+
+
+# In[43]:
+
+
+with open(os.path.join(resultsroute, "VARdict.pickle"), "wb") as f:
+    pickle.dump(var_models, f, pickle.HIGHEST_PROTOCOL)
+
 
 # In[ ]:
 
