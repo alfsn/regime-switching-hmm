@@ -57,13 +57,13 @@ with open(os.path.join(dumproute, "tickerlist.pickle"), 'wb') as f:
           # es esta la lista que realmente necesito? luego aparecen USD y ^MERV_USD
 
 
-# In[6]:
+# In[7]:
 
 
 factordict={"GGAL": 10, "YPF":1, "EDN":20, "BMA":10, "BBAR":3, "TEO":5}
 
 
-# In[7]:
+# In[8]:
 
 
 stocks=tickerlist.copy()
@@ -76,13 +76,13 @@ del stocks
 stocklist
 
 
-# In[8]:
+# In[9]:
 
 
 ohlclist=["Open", "High", "Low", "Close"]
 
 
-# In[9]:
+# In[10]:
 
 
 objectlist=[]
@@ -91,7 +91,7 @@ for ticker in tickerlist:
     objectlist.append(yf.Ticker(ticker))    
 
 
-# In[10]:
+# In[11]:
 
 
 # get historical market data
@@ -100,14 +100,14 @@ start='2013-01-01'
 end="2023-06-01"
 
 
-# In[11]:
+# In[12]:
 
 
 name=f'dataset_{start}_{end}.pickle'
 filename=os.path.join(dataroute, name)
 
 
-# In[12]:
+# In[13]:
 
 
 if not os.path.exists(filename):
@@ -125,13 +125,13 @@ else:
 
 # ## Data quality deletion
 
-# In[13]:
+# In[14]:
 
 
 data_quality_dates=["2022-07-14"]
 
 
-# In[14]:
+# In[15]:
 
 
 for ticker in tickerlist:
@@ -140,7 +140,7 @@ for ticker in tickerlist:
 
 # ## Implicit USD calculation
 
-# In[15]:
+# In[16]:
 
 
 def _reindex_refill_dfs(df1, df2):
@@ -158,7 +158,7 @@ def _reindex_refill_dfs(df1, df2):
     return df3, df4
 
 
-# In[16]:
+# In[17]:
 
 
 def calculate_usd(usd_df, ars_df, conversion_factor):
@@ -172,7 +172,7 @@ def calculate_usd(usd_df, ars_df, conversion_factor):
     return implicit_usd
 
 
-# In[17]:
+# In[18]:
 
 
 usdlist=[]
@@ -183,7 +183,7 @@ for stocktuplo in stocklist:
     data[f"USD_{us}"]["Average"]=data[f"USD_{us}"].mean(axis=1)
 
 
-# In[18]:
+# In[19]:
 
 
 data["USD"]=pd.DataFrame(columns=ohlclist)
@@ -195,7 +195,7 @@ for i in ohlclist:
 data["USD"]["Average"]=data["USD"].mean(axis=1)
 
 
-# In[19]:
+# In[20]:
 
 
 for key in data.keys():
@@ -203,7 +203,7 @@ for key in data.keys():
     # revisar esto
 
 
-# In[20]:
+# In[21]:
 
 
 data["USD"][[*ohlclist, "Average"]].plot(figsize=(10,10), logy=True, grid=True)
@@ -211,7 +211,7 @@ data["USD"][[*ohlclist, "Average"]].plot(figsize=(10,10), logy=True, grid=True)
 
 # ## USD Denominated Index
 
-# In[21]:
+# In[22]:
 
 
 data["USD_^MERV"]=pd.DataFrame(columns=ohlclist)
@@ -220,7 +220,7 @@ for col in ohlclist:
     data["USD_^MERV"][col] = data["^MERV"][col]/data["USD"]["Average"]
 
 
-# In[22]:
+# In[23]:
 
 
 data["USD_^MERV"].fillna(method="ffill", inplace=True)
@@ -235,7 +235,7 @@ data["USD_^MERV"].fillna(method="ffill", inplace=True)
 # 
 # Garman, M. B. and M. J. Klass (1980). On the estimation of security price volatilities from historical data. Journal of Business 53, 67–78.
 
-# In[23]:
+# In[24]:
 
 
 def gk_vol(o, h, l, c):
@@ -245,7 +245,7 @@ def gk_vol(o, h, l, c):
 
 # ## Returns Calculation
 
-# In[24]:
+# In[25]:
 
 
 for ticker in data.keys():
@@ -258,16 +258,6 @@ for ticker in data.keys():
     view["gk_vol"] = gk_vol(o=view["Open"], h=view["High"], l=view["Low"], c=view["Close"])
     # delete first observation to eliminate nans
     data[ticker]=data[ticker][1:].copy()
-
-
-# ## Save dataset
-
-# In[25]:
-
-
-processedname="processed_"+name
-with open(os.path.join(dataroute, processedname), 'wb') as handle:
-    pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 # ## Process into single dataframe, matching dates and forward filling
@@ -297,7 +287,33 @@ df.fillna(0, inplace=True)
 
 # ## Excluimos los dólares implícitos
 
-# In[48]:
+# In[29]:
+
+
+usdlist=[]
+for key in data.keys():
+    if key.startswith("USD"):
+        usdlist.append(key)
+usdlist.remove("USD")
+usdlist.remove("USD_^MERV")        
+
+print(usdlist)
+
+for col in usdlist:
+    del data[col]
+
+
+# ## Save dataset
+
+# In[30]:
+
+
+processedname="processed_"+name
+with open(os.path.join(dataroute, processedname), 'wb') as handle:
+    pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+# In[31]:
 
 
 particular_USDs=[column for column in df.columns if ((column.startswith("USD")) and ("^MERV" not in column))]
@@ -307,14 +323,20 @@ particular_USDs.remove("USD_gk_vol")
 particular_USDs
 
 
-# In[52]:
+# In[32]:
 
 
 df_clean= df.drop(columns=particular_USDs)
 df_clean
 
 
-# In[53]:
+# In[33]:
+
+
+assert not (df_clean.isna()).any().any(), "Existen n/a"
+
+
+# In[34]:
 
 
 finaldfname="finaldf_"+name
