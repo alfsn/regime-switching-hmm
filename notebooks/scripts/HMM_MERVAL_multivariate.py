@@ -131,6 +131,25 @@ for key in data.keys():
         plot_close_rets_vol(data, key, comp)
 
 
+# ## Coefficients 
+
+# In[9]:
+
+
+models.keys()
+
+
+# In[10]:
+
+
+for model in models.keys()
+    print(model)
+    print("Matriz de transicion:")
+    print(model.transmat_)
+    print("Matriz de emisiones:")
+    print(model.means_)
+
+
 # ## HMM Selection
 
 # Selecting the Number of States in Hidden Markov Models: Pragmatic Solutions Illustrated Using Animal Movement
