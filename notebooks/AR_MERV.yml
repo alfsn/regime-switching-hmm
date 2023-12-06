@@ -1,0 +1,36 @@
+---
+tablename_prefix: "AR"
+
+# dates
+start_train: '2013-01-01'
+end_train: "2023-06-01"
+start_test: '2023-06-01'
+end_test: "2023-12-01"
+
+data_quality_dates: ["2022-07-14", "2023-11-20"]
+
+# downloading data
+index: "^MERV"
+# el formato de este diccionario será
+  # nombre_exterior: [nombre_exterior, nombre_local, factor de conversión]
+stocksdict: 
+ GGAL: 
+ - "GGAL"
+ - "GGAL.BA" 
+ - 10 
+ YPF: 
+ - "YPF"
+ - "YPFD.BA"
+ - 1
+ EDN: 
+ - "EDN"
+ - "EDN.BA"
+ - 20
+ BMA: 
+ - "BMA"
+ - "BMA.BA"
+ - 10
+ BBAR: 
+ - "BBAR"
+ - "BBAR.BA"
+ - 3
