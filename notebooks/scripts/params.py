@@ -13,8 +13,17 @@ def get_params():
 
     tablename_prefix = yaml_data['tablename_prefix']
     index = yaml_data['index']
-    start_train = yaml_data['start_train']
-    end_test = yaml_data['end_test']
-    yaml_data['tablename'] = f"""{tablename_prefix}_{index}_{start_train.replace("-","_")}__{end_test.replace("-","_")}"""
+    yaml_data['tablename'] = f"""{tablename_prefix}_{index}"""
+    
+    yaml_data['stockslist']=[]
+    # only stock tickers - excludes index
+    for stock, lista in yaml_data["stocksdict"].items():
+        local=lista[1] 
+        ext=lista[0]
+        yaml_data['stockslist'].append(local)
+        yaml_data['stockslist'].append(ext)
+    
+    # all downloadable tickers
+    yaml_data['tickerlist'] = [yaml_data['index']]+yaml_data['stockslist'].copy()
     
     return yaml_data
