@@ -1,3 +1,4 @@
+---
 tablename_prefix: "AR"
 
 # dates
@@ -10,5 +11,26 @@ data_quality_dates: ["2022-07-14", "2023-11-20"]
 
 # downloading data
 index: "^MERV"
-stocklist: [("GGAL", "GGAL.BA"), ("YPF", "YPFD.BA"), ("EDN", "EDN.BA"), ("BMA", "BMA.BA")] 
-factordict: {"GGAL": 10, "YPF": 1, "EDN": 20, "BMA": 10, "BBAR": 3, "TEO": 5}
+# el formato de este diccionario será
+  # nombre_exterior: [nombre_exterior, nombre_local, factor de conversión]
+stocksdict: 
+ GGAL: 
+ - "GGAL"
+ - "GGAL.BA" 
+ - 10 
+ YPF: 
+ - "YPF"
+ - "YPFD.BA"
+ - 1
+ EDN: 
+ - "EDN"
+ - "EDN.BA"
+ - 20
+ BMA: 
+ - "BMA"
+ - "BMA.BA"
+ - 10
+ BBAR: 
+ - "BBAR"
+ - "BBAR.BA"
+ - 3
