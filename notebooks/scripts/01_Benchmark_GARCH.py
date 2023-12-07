@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[35]:
+# In[2]:
 
 
 import numpy as np
@@ -15,17 +15,22 @@ import arch
 import os
 import pickle
 
-import warnings
-from sklearn.exceptions import ConvergenceWarning
 
-
-# In[2]:
+# In[3]:
 
 
 np.random.seed(42)
 
 
-# In[73]:
+# In[7]:
+
+
+from scripts.params import get_params
+
+params = get_params()
+
+
+# In[4]:
 
 
 dataroute=os.path.join("..",  "data")
@@ -35,13 +40,10 @@ resultsroute=os.path.join("..",  "results")
 
 # ## Data Retrieval
 
-# In[4]:
+# In[8]:
 
 
-start='2013-01-01'
-end="2023-06-01"
-
-name=f'processed_dataset_{start}_{end}.pickle'
+name=f'processed_train_{params["tablename"]}.pickle'
 filename=os.path.join(dataroute, name)
 
 with open(filename, 'rb') as handle:
@@ -50,7 +52,7 @@ with open(filename, 'rb') as handle:
 
 # ## GARCH Training
 
-# In[5]:
+# In[9]:
 
 
 # Define the range of p and q values
@@ -59,14 +61,14 @@ q_values = [0, 1, 2, 3]  # Example: q values
 # all models with q=0 are exclusively ARCH (non-GARCH)
 
 
-# In[6]:
+# In[10]:
 
 
 models = {}
 predict = {}
 
 
-# In[7]:
+# In[11]:
 
 
 for key, ohlc_df in data.items():
@@ -75,14 +77,14 @@ for key, ohlc_df in data.items():
         #display(ohlc_df.loc[ohlc_df["log_rets"].isna()])
 
 
-# In[67]:
+# In[12]:
 
 
 best_aic={}
 best_bic={}
 
 
-# In[68]:
+# In[13]:
 
 
 def check_best_aic(key, model, previous_best:float):
@@ -96,7 +98,7 @@ def check_best_aic(key, model, previous_best:float):
             best_aic[key]=(model, model.aic)
 
 
-# In[69]:
+# In[14]:
 
 
 def check_best_bic(key, model, previous_best:float):
@@ -110,7 +112,7 @@ def check_best_bic(key, model, previous_best:float):
             best_bic[key]=(model, model.bic)
 
 
-# In[70]:
+# In[15]:
 
 
 # Estimate ARMA-ARCH and ARMA-GARCH models for different p and q values
@@ -159,7 +161,7 @@ print(f"nonconverged: {nonconverged_models}")
 
 # # Residuals
 
-# In[72]:
+# In[17]:
 
 
 aic_residuals={}
@@ -172,30 +174,27 @@ for key in best_aic.keys():
 
 # # Saving best models and residuals
 
-# In[74]:
+# In[18]:
 
 
-with open(os.path.join(resultsroute, "GARCH_aic_bestmodels.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""GARCH_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
     pickle.dump(best_aic, output_file)
 
-with open(os.path.join(resultsroute, "GARCH_bic_bestmodels.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""GARCH_{params["tablename"]}_bic_bestmodels.pickle"""), "wb") as output_file:
     pickle.dump(best_bic, output_file)
 
 
-# In[75]:
+# Los modelos sirven los residuos NO!
+# https://github.com/alfsn/regime-switching-hmm/issues/27
+
+# In[19]:
 
 
-with open(os.path.join(resultsroute, "GARCH_aic_residuals.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""GARCH_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
     pickle.dump(aic_residuals, output_file)
 
-with open(os.path.join(resultsroute, "GARCH_bic_residuals.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""GARCH_{params["tablename"]}_bic_residuals.pickle"""), "wb") as output_file:
     pickle.dump(bic_residuals, output_file)
-
-
-# In[ ]:
-
-
-
 
 
 # # Model prediction
@@ -203,7 +202,7 @@ with open(os.path.join(resultsroute, "GARCH_bic_residuals.pickle"), "wb") as out
 # 
 # Function documentation: https://arch.readthedocs.io/en/latest/univariate/generated/generated/arch.univariate.base.ARCHModelResult.forecast.html#arch.univariate.base.ARCHModelResult.forecast
 
-# In[9]:
+# In[20]:
 
 
 for key, ohlc_df in data.items():
@@ -216,42 +215,44 @@ for key, ohlc_df in data.items():
 
 
 # # Plotting
+# ## TODO: Esto aun está feo: tengo que armar que esto devuelva el plotteo de returns y los predicts uno encima del otro
 
-# In[10]:
+# In[24]:
 
 
-def plot_close_rets_vol(data, key, comp):
-    model=models[f"{key}_{comp}_model"]
-    prediction=models[f"{key}_{comp}_prediction"]
-    states=set(prediction)
-
+def plot_close_rets(data, model, key, name):
     fig=plt.figure(figsize = (20, 20))
     plt.tight_layout()
-    plt.title(f"{key} Close, Log returns and intraday Vol\n{comp} states")
+    plt.title(f"{key} Log returns")
+    
+    plt.subplot(1, 1, 1)
 
-    for subplot, var in zip(range(1,4), ["Close", "log_rets", "gk_vol"]):    
-        plt.subplot(3,1,subplot)
-        for i in set(prediction):
-            state = (prediction == i)
-            x = data[key].index[state]
-            y = data[key][var].iloc[state]
-            plt.plot(x, y, '.')
-        plt.legend(states, fontsize=16)
+    x = data[key]["log_rets"]
+    y = data[key].index
+    
+    plt.plot(x, y, '.', c="red")
+    #plt.plot(x, model.predict(x), '.', c="blue")        
         
-        plt.grid(True)
-        plt.xlabel("datetime", fontsize=16)
-        plt.ylabel(var, fontsize=16)
+    plt.grid(True)
+    plt.xlabel("datetime", fontsize=16)
+    plt.ylabel("log rets", fontsize=16)
             
     plt.savefig(os.path.join(resultsroute, "graphs", 
-                             f"{comp}_states", 
-                             f"{key}_model_{comp}.png"))
+                             f"GARCH", 
+                             f"{key}_model_{name}.png"))
 
 
-# In[11]:
+# In[26]:
 
 
 for key in data.keys():
-    for comp in comps:
-        plot_close_rets_vol(data, key, comp)
+    print(key)
+    plot_close_rets(data, key)
 plt.show()
+
+
+# In[ ]:
+
+
+
 

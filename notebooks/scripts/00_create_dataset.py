@@ -14,21 +14,36 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 
-
-# In[2]:
-
-
 import yfinance as yf
 yf.pdr_override()
 
 
-# In[3]:
+# In[2]:
 
 
 np.random.seed(42)
 
 
-# In[4]:
+# In[8]:
+
+
+from scripts.params import get_params
+
+params = get_params()
+
+# all downloadable tickers
+tickerlist=params["tickerlist"]
+# only stock tickers - excludes index
+stockslist=params["stockslist"]
+
+
+# In[9]:
+
+
+tickerlist
+
+
+# In[10]:
 
 
 dataroute=os.path.join("..",  "data")
@@ -38,109 +53,92 @@ resultsroute=os.path.join("..",  "results")
 
 # ## Data Retrieval
 
-# In[5]:
-
-
-tickerlist=["^MERV", 
-            "GGAL", "GGAL.BA", 
-            "YPF", "YPFD.BA",
-            "EDN", "EDN.BA",
-            "BMA", "BMA.BA"] 
-# sumar tamb BBAR/BBAR? TEO/TECO2?
-
-
-# In[6]:
-
-
-with open(os.path.join(dumproute, "tickerlist.pickle"), 'wb') as f:
-          pickle.dump(tickerlist, f, protocol=pickle.HIGHEST_PROTOCOL)
-          # es esta la lista que realmente necesito? luego aparecen USD y ^MERV_USD
-
-
-# In[7]:
-
-
-factordict={"GGAL": 10, "YPF":1, "EDN":20, "BMA":10, "BBAR":3, "TEO":5}
-
-
-# In[8]:
-
-
-stocks=tickerlist.copy()
-stocks.remove("^MERV")
-stocklist=[]
-
-for i in range(0, len(stocks), 2):
-    stocklist.append((stocks[i], stocks[i+1]))
-del stocks
-stocklist
-
-
-# In[9]:
+# In[11]:
 
 
 ohlclist=["Open", "High", "Low", "Close"]
 
 
-# In[10]:
+# In[12]:
 
 
 objectlist=[]
 
-for ticker in tickerlist:
-    objectlist.append(yf.Ticker(ticker))    
-
-
-# In[11]:
-
-
-# get historical market data
-data={}
-start='2013-01-01'
-end="2023-06-01"
-
-
-# In[12]:
-
-
-name=f'dataset_{start}_{end}.pickle'
-filename=os.path.join(dataroute, name)
+for item in tickerlist:
+    objectlist.append(yf.Ticker(item))
 
 
 # In[13]:
 
 
-if not os.path.exists(filename):
-    for ticker in objectlist:
-        # descargo data en un diccionario[ticker]
-        data[ticker.ticker] = ticker.history(start=start, end=end)
-        # guardo en un pickle
-    with open(filename, 'wb') as handle:
-        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            
-else:
-    with open(filename, 'rb') as handle:
-        data=pickle.load(handle)
+params["tablename"]
 
-
-# ## Data quality deletion
 
 # In[14]:
 
 
-data_quality_dates=["2022-07-14"]
+def download_data(start, end, tablename, datatype, dataroute):
+    name=f'dataset_{datatype}_{tablename}.pickle'
+    filename=os.path.join(dataroute, name)
+    if not os.path.exists(filename):
+        data={}
+        for ticker in objectlist:
+            # descargo data en un diccionario[ticker]
+            data[ticker.ticker] = ticker.history(start=start, end=end)
+            # guardo en un pickle
+        with open(filename, 'wb') as handle:
+            pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                
+    else:
+        with open(filename, 'rb') as handle:
+            data=pickle.load(handle)    
+    return data
 
 
 # In[15]:
 
 
-for ticker in tickerlist:
-    data[ticker]=data[ticker].loc[~data[ticker].index.isin(pd.to_datetime(data_quality_dates))]
+train_data=download_data(start=params["start_train"], 
+                         end=params["end_train"],
+                         tablename=params["tablename"],
+                         datatype="train", 
+                         dataroute=dataroute)
+
+test_data=download_data(start=params["start_test"], 
+                         end=params["end_test"],
+                         tablename=params["tablename"],
+                         datatype="test",
+                         dataroute=dataroute)
+
+datasets=[train_data, test_data]
+
+
+# In[16]:
+
+
+train_data[params["index"]].head()
+
+
+# ## Data quality deletion
+
+# In[17]:
+
+
+dq_index=pd.to_datetime(params["data_quality_dates"])
+
+
+# In[18]:
+
+
+for data in datasets:
+    for ticker in tickerlist:
+        data[ticker].index=data[ticker].index.date
+        data[ticker]=data[ticker].drop(dq_index, errors="ignore")
 
 
 # ## Implicit USD calculation
 
-# In[16]:
+# In[21]:
 
 
 def _reindex_refill_dfs(df1, df2):
@@ -153,12 +151,12 @@ def _reindex_refill_dfs(df1, df2):
     df3=df1.reindex(index3)
     df4=df2.reindex(index3)
     # fillna con previous value
-    df3.fillna(method="ffill")
-    df4.fillna(method="ffill")
+    df3.ffill(inplace=True)
+    df4.ffill(inplace=True)
     return df3, df4
 
 
-# In[17]:
+# In[22]:
 
 
 def calculate_usd(usd_df, ars_df, conversion_factor):
@@ -172,58 +170,67 @@ def calculate_usd(usd_df, ars_df, conversion_factor):
     return implicit_usd
 
 
-# In[18]:
+# In[28]:
 
 
-usdlist=[]
-for stocktuplo in stocklist:
-    us, ba = stocktuplo
-    usdlist.append(f"USD_{us}")
-    data[f"USD_{us}"]=calculate_usd(data[us][ohlclist], data[ba][ohlclist], factordict[us])
-    data[f"USD_{us}"]["Average"]=data[f"USD_{us}"].mean(axis=1)
+params["stocksdict"].items()
 
 
-# In[19]:
+# In[29]:
 
 
-data["USD"]=pd.DataFrame(columns=ohlclist)
+usd_col_set=set()
 
-for i in ohlclist:
-    df=pd.concat([data[col][i] for col in usdlist], axis=1)
-    data["USD"][i]=df.mean(axis=1)
-    
-data["USD"]["Average"]=data["USD"].mean(axis=1)
-
-
-# In[20]:
-
-
-for key in data.keys():
-    data[key].fillna(method="ffill", inplace=True)
-    # revisar esto
+for data in datasets:
+    for foreign, local, factor in params["stocksdict"].values():
+        usd_col_set.add(f"USD_{foreign}")
+        data[f"USD_{foreign}"]=calculate_usd(data[foreign][ohlclist], data[local][ohlclist], factor)
+        data[f"USD_{foreign}"]["Average"]=data[f"USD_{foreign}"].mean(axis=1)
+        
+usd_col_set
 
 
-# In[21]:
+# In[30]:
 
 
-data["USD"][[*ohlclist, "Average"]].plot(figsize=(10,10), logy=True, grid=True)
+for data in datasets:
+    data["USD"]=pd.DataFrame(columns=ohlclist)
+
+    for i in ohlclist:
+        df=pd.concat([data[col][i] for col in usd_col_set], axis=1)
+        data["USD"][i]=df.mean(axis=1)
+        
+    data["USD"]["Average"]=data["USD"].mean(axis=1)
+
+
+# In[31]:
+
+
+for data in datasets:
+    for key in data.keys():
+        data[key].ffill(inplace=True)
+        # revisar esto
+
+
+# In[32]:
+
+
+for data in datasets:
+    data["USD"][[*ohlclist, "Average"]].plot(figsize=(10,10), logy=True, grid=True)
 
 
 # ## USD Denominated Index
 
-# In[22]:
+# In[33]:
 
 
-data["USD_^MERV"]=pd.DataFrame(columns=ohlclist)
+for data in datasets:
+    data["USD_^MERV"]=pd.DataFrame(columns=ohlclist)
 
-for col in ohlclist:
-    data["USD_^MERV"][col] = data["^MERV"][col]/data["USD"]["Average"]
-
-
-# In[23]:
-
-
-data["USD_^MERV"].fillna(method="ffill", inplace=True)
+    for col in ohlclist:
+        data["USD_^MERV"][col] = data["^MERV"][col]/data["USD"]["Average"]
+        
+    data["USD_^MERV"].ffill(inplace=True)
 
 
 # ## Intraday Volatility
@@ -235,7 +242,7 @@ data["USD_^MERV"].fillna(method="ffill", inplace=True)
 # 
 # Garman, M. B. and M. J. Klass (1980). On the estimation of security price volatilities from historical data. Journal of Business 53, 67–78.
 
-# In[24]:
+# In[34]:
 
 
 def gk_vol(o, h, l, c):
@@ -245,75 +252,78 @@ def gk_vol(o, h, l, c):
 
 # ## Returns Calculation
 
-# In[25]:
+# In[35]:
 
 
-for ticker in data.keys():
-    view=data[ticker]
-    view["rets"] = view["Close"]/view["Close"].shift()-1
-    view["log_rets"] = np.log(view["Close"]/view["Close"].shift())
-    view["norm_range"] = (view["High"]-view["Low"])/view["Open"]
-    # chequear si esto tiene asidero
-    # alternativa (view["High"]-view["Low"])/view["Close"]
-    view["gk_vol"] = gk_vol(o=view["Open"], h=view["High"], l=view["Low"], c=view["Close"])
-    # delete first observation to eliminate nans
-    data[ticker]=data[ticker][1:].copy()
+for data in datasets:
+    for ticker in data.keys():
+        view=data[ticker]
+        view["rets"] = view["Close"]/view["Close"].shift()-1
+        view["log_rets"] = np.log(view["Close"]/view["Close"].shift())
+        view["norm_range"] = (view["High"]-view["Low"])/view["Open"]
+        # chequear si esto tiene asidero
+        # alternativa (view["High"]-view["Low"])/view["Close"]
+        view["gk_vol"] = gk_vol(o=view["Open"], h=view["High"], l=view["Low"], c=view["Close"])
+        # delete first observation to eliminate nans
+        data[ticker]=data[ticker][1:].copy()
 
 
 # ## Process into single dataframe, matching dates and forward filling
 # Véase https://github.com/alfsn/regime-switching-hmm/issues/9
 
-# In[26]:
+# In[36]:
 
 
-df=pd.DataFrame()
+df_train = pd.DataFrame()
+df_test = pd.DataFrame()
 
-for key, value in data.items():
-    for column in ["rets", "log_rets", "gk_vol"]:
-        df[key+"_"+column]=value[column]
+df_datasets=[df_train, df_test]
 
-
-# In[27]:
-
-
-df.loc[df.isna().any(axis=1), df.isna().any(axis=0)]
+for df, data in zip(df_datasets, datasets):
+    for key, value in data.items():
+        for column in ["rets", "log_rets", "gk_vol"]:
+            df[key+"_"+column]=value[column]
 
 
-# In[28]:
+# In[37]:
 
 
-df.fillna(0, inplace=True)
+for df in df_datasets:
+    df.loc[df.isna().any(axis=1), df.isna().any(axis=0)]
+    df.fillna(0, inplace=True)
 
 
 # ## Excluimos los dólares implícitos
 
-# In[29]:
+# In[38]:
 
 
-usdlist=[]
-for key in data.keys():
-    if key.startswith("USD"):
-        usdlist.append(key)
-usdlist.remove("USD")
-usdlist.remove("USD_^MERV")        
+for data in datasets:
+    usdlist=[]
+    for key in data.keys():
+        if key.startswith("USD"):
+            usdlist.append(key)
+    usdlist.remove("USD")
+    usdlist.remove("USD_^MERV")        
 
-print(usdlist)
+    print(usdlist)
 
-for col in usdlist:
-    del data[col]
+    for col in usdlist:
+        del data[col]
 
 
 # ## Save dataset
 
-# In[30]:
+# In[40]:
 
 
-processedname="processed_"+name
-with open(os.path.join(dataroute, processedname), 'wb') as handle:
-    pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+for data, name in zip(datasets, ["train", "test"]):
+    processedname="processed_"+name+"_"+params["tablename"]+".pickle"
+    with open(os.path.join(dataroute, processedname), 'wb') as handle:
+        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[31]:
+# In[41]:
 
 
 particular_USDs=[column for column in df.columns if ((column.startswith("USD")) and ("^MERV" not in column))]
@@ -323,23 +333,21 @@ particular_USDs.remove("USD_gk_vol")
 particular_USDs
 
 
-# In[32]:
+# In[42]:
 
 
-df_clean= df.drop(columns=particular_USDs)
-df_clean
+df_clean_datasets=[]
+for df in df_datasets:
+    df_clean= df.drop(columns=particular_USDs)
+    assert not (df_clean.isna()).any().any(), "Existen n/a"
+    df_clean_datasets.append(df_clean)
 
 
-# In[33]:
+# In[43]:
 
 
-assert not (df_clean.isna()).any().any(), "Existen n/a"
-
-
-# In[34]:
-
-
-finaldfname="finaldf_"+name
-with open(os.path.join(dataroute, finaldfname), 'wb') as handle:
-    pickle.dump(df_clean, handle, protocol=pickle.HIGHEST_PROTOCOL)
+for df_clean, name in zip(df_clean_datasets, ["train", "test"]):
+    finaldfname="finaldf_"+name+"_"+params["tablename"]+".pickle"
+    with open(os.path.join(dataroute, finaldfname), 'wb') as handle:
+        pickle.dump(df_clean, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

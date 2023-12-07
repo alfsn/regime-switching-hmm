@@ -38,48 +38,43 @@ dumproute=os.path.join("..",  "dump")
 resultsroute=os.path.join("..",  "results")
 
 
-# ## Data Retrieval
-
 # In[5]:
 
 
-start='2013-01-01'
-end="2023-06-01"
+from scripts.params import get_params
 
-name=f'processed_dataset_{start}_{end}.pickle'
+params = get_params()
+
+
+# ## Data Retrieval
+
+# In[6]:
+
+
+name=f"""processed_train_{params["tablename"]}.pickle"""
 filename=os.path.join(dataroute, name)
 with open(filename, 'rb') as handle:
     data=pickle.load(handle)
     
-name=f'finaldf_dataset_{start}_{end}.pickle'
+name=f"""finaldf_train_{params["tablename"]}.pickle"""
 filename=os.path.join(dataroute, name)
 with open(filename, 'rb') as handle:
     df=pickle.load(handle)
 
 
-# In[6]:
-
-
-with open(os.path.join(dumproute, "tickerlist.pickle"), 'rb') as f:
-    tickerlist=pickle.load(f)
-tickerlist
-
-
 # In[7]:
+
+
+tickerlist=params["tickerlist"]
+
+
+# In[8]:
 
 
 df.head(3)
 
 
 # # VAR Training
-
-# In[8]:
-
-
-log_rets_list=[column for column in df.columns if column.endswith("log_rets")]
-vol_list=[column for column in df.columns if column.endswith("vol")]
-simple_rets_list=[column for column in df.columns if (column.endswith("log_rets")) and (column not in log_rets_list)]
-
 
 # In[9]:
 
@@ -122,36 +117,39 @@ for stock in tickerlist:
     bic_best_residuals[stock]=bic_best_model[stock].resid
 
 
-# In[15]:
+# In[12]:
 
 
-with open(os.path.join(resultsroute, "VAR_univ_aic_bestmodels.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
     pickle.dump(aic_best_model, output_file)
 
-with open(os.path.join(resultsroute, "VAR_univ_bic_bestmodels.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_bic_bestmodels.pickle"""), "wb") as output_file:
     pickle.dump(bic_best_model, output_file)
 
 
-# In[16]:
+# Los modelos sirven los residuos NO!
+# https://github.com/alfsn/regime-switching-hmm/issues/27
+
+# In[13]:
 
 
-with open(os.path.join(resultsroute, "VAR_univ_aic_residuals.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
     pickle.dump(aic_best_residuals, output_file)
 
-with open(os.path.join(resultsroute, "VAR_univ_bic_residuals.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_bic_residuals.pickle"""), "wb") as output_file:
     pickle.dump(bic_best_residuals, output_file)
 
 
 # # with USD
 
-# In[29]:
+# In[14]:
 
 
 emptydf=pd.DataFrame(columns=["AIC", "BIC"], index=range(1,11))
 results_dict_df={stock:emptydf for stock in tickerlist}
 
 
-# In[30]:
+# In[15]:
 
 
 aic_best_model={stock:None for stock in tickerlist}
@@ -161,7 +159,7 @@ aic_best_residuals={stock:None for stock in tickerlist}
 bic_best_residuals={stock:None for stock in tickerlist}
 
 
-# In[31]:
+# In[16]:
 
 
 for stock in tickerlist:
@@ -185,28 +183,25 @@ for stock in tickerlist:
     bic_best_residuals[stock]=bic_best_model[stock].resid
 
 
-# In[32]:
+# In[17]:
 
 
-with open(os.path.join(resultsroute, "VAR_multiv_aic_bestmodels.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
     pickle.dump(aic_best_model, output_file)
 
-with open(os.path.join(resultsroute, "VAR_multiv_bic_bestmodels.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_bic_bestmodels.pickle"""), "wb") as output_file:
     pickle.dump(bic_best_model, output_file)
 
 
-# In[33]:
+# Los modelos sirven los residuos NO!
+# https://github.com/alfsn/regime-switching-hmm/issues/27
+
+# In[18]:
 
 
-with open(os.path.join(resultsroute, "VAR_multiv_aic_residuals.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
     pickle.dump(aic_best_residuals, output_file)
 
-with open(os.path.join(resultsroute, "VAR_multiv_bic_residuals.pickle"), "wb") as output_file:
+with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_bic_residuals.pickle"""), "wb") as output_file:
     pickle.dump(bic_best_residuals, output_file)
-
-
-# In[34]:
-
-
-bic_best_residuals["^MERV"]
 
