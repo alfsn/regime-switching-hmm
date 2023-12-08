@@ -24,7 +24,7 @@ yf.pdr_override()
 np.random.seed(42)
 
 
-# In[8]:
+# In[3]:
 
 
 from scripts.params import get_params
@@ -37,13 +37,13 @@ tickerlist=params["tickerlist"]
 stockslist=params["stockslist"]
 
 
-# In[9]:
+# In[4]:
 
 
 tickerlist
 
 
-# In[10]:
+# In[5]:
 
 
 dataroute=os.path.join("..",  "data")
@@ -53,13 +53,13 @@ resultsroute=os.path.join("..",  "results")
 
 # ## Data Retrieval
 
-# In[11]:
+# In[6]:
 
 
 ohlclist=["Open", "High", "Low", "Close"]
 
 
-# In[12]:
+# In[7]:
 
 
 objectlist=[]
@@ -68,13 +68,13 @@ for item in tickerlist:
     objectlist.append(yf.Ticker(item))
 
 
-# In[13]:
+# In[8]:
 
 
 params["tablename"]
 
 
-# In[14]:
+# In[9]:
 
 
 def download_data(start, end, tablename, datatype, dataroute):
@@ -95,7 +95,7 @@ def download_data(start, end, tablename, datatype, dataroute):
     return data
 
 
-# In[15]:
+# In[10]:
 
 
 train_data=download_data(start=params["start_train"], 
@@ -113,7 +113,7 @@ test_data=download_data(start=params["start_test"],
 datasets=[train_data, test_data]
 
 
-# In[16]:
+# In[11]:
 
 
 train_data[params["index"]].head()
@@ -121,13 +121,13 @@ train_data[params["index"]].head()
 
 # ## Data quality deletion
 
-# In[17]:
+# In[12]:
 
 
 dq_index=pd.to_datetime(params["data_quality_dates"])
 
 
-# In[18]:
+# In[13]:
 
 
 for data in datasets:
@@ -138,7 +138,7 @@ for data in datasets:
 
 # ## Implicit USD calculation
 
-# In[21]:
+# In[14]:
 
 
 def _reindex_refill_dfs(df1, df2):
@@ -156,7 +156,7 @@ def _reindex_refill_dfs(df1, df2):
     return df3, df4
 
 
-# In[22]:
+# In[15]:
 
 
 def calculate_usd(usd_df, ars_df, conversion_factor):
@@ -170,13 +170,13 @@ def calculate_usd(usd_df, ars_df, conversion_factor):
     return implicit_usd
 
 
-# In[28]:
+# In[16]:
 
 
 params["stocksdict"].items()
 
 
-# In[29]:
+# In[17]:
 
 
 usd_col_set=set()
@@ -190,7 +190,7 @@ for data in datasets:
 usd_col_set
 
 
-# In[30]:
+# In[18]:
 
 
 for data in datasets:
@@ -203,7 +203,7 @@ for data in datasets:
     data["USD"]["Average"]=data["USD"].mean(axis=1)
 
 
-# In[31]:
+# In[19]:
 
 
 for data in datasets:
@@ -212,7 +212,7 @@ for data in datasets:
         # revisar esto
 
 
-# In[32]:
+# In[20]:
 
 
 for data in datasets:
@@ -221,7 +221,7 @@ for data in datasets:
 
 # ## USD Denominated Index
 
-# In[33]:
+# In[21]:
 
 
 for data in datasets:
@@ -242,7 +242,7 @@ for data in datasets:
 # 
 # Garman, M. B. and M. J. Klass (1980). On the estimation of security price volatilities from historical data. Journal of Business 53, 67–78.
 
-# In[34]:
+# In[22]:
 
 
 def gk_vol(o, h, l, c):
@@ -252,7 +252,7 @@ def gk_vol(o, h, l, c):
 
 # ## Returns Calculation
 
-# In[35]:
+# In[23]:
 
 
 for data in datasets:
@@ -271,7 +271,7 @@ for data in datasets:
 # ## Process into single dataframe, matching dates and forward filling
 # Véase https://github.com/alfsn/regime-switching-hmm/issues/9
 
-# In[36]:
+# In[24]:
 
 
 df_train = pd.DataFrame()
@@ -285,7 +285,7 @@ for df, data in zip(df_datasets, datasets):
             df[key+"_"+column]=value[column]
 
 
-# In[37]:
+# In[25]:
 
 
 for df in df_datasets:
@@ -295,7 +295,7 @@ for df in df_datasets:
 
 # ## Excluimos los dólares implícitos
 
-# In[38]:
+# In[26]:
 
 
 for data in datasets:
@@ -314,7 +314,7 @@ for data in datasets:
 
 # ## Save dataset
 
-# In[40]:
+# In[27]:
 
 
 for data, name in zip(datasets, ["train", "test"]):
@@ -323,7 +323,7 @@ for data, name in zip(datasets, ["train", "test"]):
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[41]:
+# In[28]:
 
 
 particular_USDs=[column for column in df.columns if ((column.startswith("USD")) and ("^MERV" not in column))]
@@ -333,7 +333,7 @@ particular_USDs.remove("USD_gk_vol")
 particular_USDs
 
 
-# In[42]:
+# In[29]:
 
 
 df_clean_datasets=[]
@@ -343,7 +343,7 @@ for df in df_datasets:
     df_clean_datasets.append(df_clean)
 
 
-# In[43]:
+# In[30]:
 
 
 for df_clean, name in zip(df_clean_datasets, ["train", "test"]):

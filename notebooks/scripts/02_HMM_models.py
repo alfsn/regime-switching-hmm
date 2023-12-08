@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[44]:
 
 
 import numpy as np
@@ -15,14 +15,14 @@ import os
 import pickle
 
 
-# In[2]:
+# In[45]:
 
 
 random_state=42
 np.random.seed(random_state)
 
 
-# In[3]:
+# In[46]:
 
 
 from scripts.params import get_params
@@ -32,7 +32,7 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[4]:
+# In[47]:
 
 
 dataroute=os.path.join("..",  "data")
@@ -40,7 +40,7 @@ dumproute=os.path.join("..",  "dump")
 resultsroute=os.path.join("..",  "results")
 
 
-# In[25]:
+# In[48]:
 
 
 name=f'finaldf_train_{params["tablename"]}.pickle'
@@ -49,13 +49,13 @@ with open(filename, 'rb') as handle:
     df=pickle.load(handle)
 
 
-# In[26]:
+# In[49]:
 
 
 df.head()
 
 
-# In[27]:
+# In[50]:
 
 
 tickerlist=params["tickerlist"]
@@ -63,26 +63,23 @@ tickerlist=params["tickerlist"]
 
 # ## HMM Training
 
-# In[28]:
+# In[51]:
 
 
-range_states=range(1,11)
+range_states=range(1,16)
 emptydf=pd.DataFrame(columns=["AIC", "BIC"], index=range_states)
-emptydf.fillna(np.inf)
+emptydf.fillna(np.inf, inplace=True)
 results_dict_df={stock:emptydf for stock in tickerlist}
 
 
-# In[29]:
+# In[52]:
 
 
 aic_best_model={stock:None for stock in tickerlist}
 bic_best_model={stock:None for stock in tickerlist}
 
-aic_best_residuals={stock:None for stock in tickerlist}
-bic_best_residuals={stock:None for stock in tickerlist}
 
-
-# In[30]:
+# In[53]:
 
 
 for stock in tickerlist:
@@ -97,20 +94,35 @@ for stock in tickerlist:
         }
 
     for nstate in range_states:
-        print(stock, nstate)
         model = hmm.GaussianHMM(n_components= nstate, **param_dict, verbose=False)
         results = model.fit(insample_data)
 
-        # TODO: aca tengo que poner un check de model convergence
-        if results.monitor_.converged:
+        convergence=results.monitor_.converged
+        # esta es la condición de si el modelo convergió
+
+        all_states_found=np.isclose(a=(model.transmat_.sum(axis=1)), b=1).all()
+        # esta es la condición de que todos los estados (nstates) hayan sido observados
+        # si no, alguna fila en la matriz de transición del modelo son 0.
+        # el errormsg es "Some rows of transmat_ have zero sum because no transition from the state was ever observed".
+
+        startprob_check = (model.startprob_.sum()==1)
+        # esta es la condición de que los estados al inicializar estén definidos
+        
+        good_model = convergence and all_states_found and startprob_check
+
+        if good_model:
             try:
                 results_dict_df[stock].loc[nstate, "AIC"]=model.aic(insample_data)
                 results_dict_df[stock].loc[nstate, "BIC"]=model.bic(insample_data)
             except ValueError:
                 pass
+        else: 
+            print(">"*10,f"{stock} {nstate} did not converge")
+            results_dict_df[stock].loc[nstate, "BIC"]=np.inf
+            results_dict_df[stock].loc[nstate, "BIC"]=np.inf
 
 
-# In[32]:
+# In[54]:
 
 
 for stock in tickerlist:
@@ -119,15 +131,27 @@ for stock in tickerlist:
     
     best_aic_nstate=results_dict_df[stock]["AIC"].astype(float).idxmin()
     best_bic_nstate=results_dict_df[stock]["BIC"].astype(float).idxmin()
+    print(f"For stock {stock}, best AIC: {best_aic_nstate} best BIC: {best_bic_nstate}")
 
     aic_best_model[stock]=hmm.GaussianHMM(n_components = best_aic_nstate, **param_dict).fit(insample_data)
     bic_best_model[stock]=hmm.GaussianHMM(n_components = best_bic_nstate, **param_dict).fit(insample_data)
 
 
-# In[34]:
+# # Generating out of sample data
+
+# In[55]:
 
 
-def generate_samples_residuals(model, insample_data, oos_data):
+name=f'finaldf_test_{params["tablename"]}.pickle'
+filename=os.path.join(dataroute, name)
+with open(filename, 'rb') as handle:
+    df_test=pickle.load(handle)
+
+
+# In[56]:
+
+
+def generate_HMM_samples_residuals(model, insample_data, oos_data):
     """
     
     """
@@ -170,21 +194,35 @@ def generate_samples_residuals(model, insample_data, oos_data):
     return samples, residuals
 
 
-# In[36]:
+# In[57]:
 
 
-samples, residuals = generate_samples_residuals(aic_best_model[params["index"]], insample_data=insample_data, oos_data=insample_data)
+aic_best_residuals={stock:None for stock in tickerlist}
+bic_best_residuals={stock:None for stock in tickerlist}
 
 
-# In[37]:
+# In[60]:
 
 
-residuals
+for stock in tickerlist:
+    columns = [f'{stock}_log_rets', f'{stock}_gk_vol']
+    insample_data = df[columns]
+    oos_data=df_test[columns]
+
+    samples, aic_best_residuals[stock] = generate_HMM_samples_residuals(
+        aic_best_model[stock], 
+        insample_data=insample_data, 
+        oos_data=oos_data)
+
+    samples, bic_best_residuals[stock] = generate_HMM_samples_residuals(
+        bic_best_model[stock], 
+        insample_data=insample_data, 
+        oos_data=oos_data)
 
 
 # # Guardado de datos
 
-# In[38]:
+# In[62]:
 
 
 with open(os.path.join(resultsroute, f"""HMM_univ_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
@@ -194,10 +232,7 @@ with open(os.path.join(resultsroute, f"""HMM_univ_{params["tablename"]}_bic_best
     pickle.dump(bic_best_model, output_file)
 
 
-# Los modelos sirven los residuos NO!
-# https://github.com/alfsn/regime-switching-hmm/issues/27
-
-# In[39]:
+# In[63]:
 
 
 with open(os.path.join(resultsroute, f"""HMM_univ_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
@@ -207,77 +242,25 @@ with open(os.path.join(resultsroute, f"""HMM_univ_{params["tablename"]}_bic_resi
     pickle.dump(bic_best_residuals, output_file)
 
 
-# In[ ]:
+# # Graficando
+
+# In[72]:
 
 
-
-
-
-# In[5]:
-
-
-models={}
-comps=[2,3,4]
-datacols=["log_rets","gk_vol"]
-
-for key in data.keys():
-    print(key)
-    for comp in comps:
-        print(comp)
-        # TODO: Change from single modelname to [key][comp] nested dict
-        modelname=f"{key}_{comp}_model"
-        predictionname=f"{key}_{comp}_prediction"
-        
-        X = data[key][datacols].values.reshape(-1, len(datacols))
-        # bivariate
-        # log returns and intraday volatility        
-        models[modelname]=hmm.GaussianHMM(n_components = comp, #no voy a usar startprob_prior por devlog 20-06-23
-                                          covariance_type = "diag", 
-                                          n_iter = 500,
-                                          random_state = random_state)
-        models[modelname].fit(X)
-        models[predictionname]=models[modelname].predict(X)
-
-
-# In[6]:
-
-
-# Predict the hidden states corresponding to observed X.
-for key in data.keys():
-    for comp in comps:
-        print(">"*30, key)
-        model=models[f"{key}_{comp}_model"]
-        prediction=models[f"{key}_{comp}_prediction"]
-        print("unique states: ", pd.unique(prediction))
-        print("\nStart probabilities:")
-        print(model.startprob_)
-        print("\nTransition matrix:")
-        print(model.transmat_)
-        print("\nGaussian distribution means:")
-        print(model.means_)
-        print("\nGaussian distribution covariances:")
-        print(model.covars_)
-        print()
-
-
-# In[7]:
-
-
-def plot_close_rets_vol(data, key, comp):
-    model=models[f"{key}_{comp}_model"]
-    prediction=models[f"{key}_{comp}_prediction"]
+def plot_close_rets_vol(model, data, key, IC):
+    prediction= model.predict(data)
     states=set(prediction)
 
     fig=plt.figure(figsize = (20, 20))
     plt.tight_layout()
-    plt.title(f"{key} Close, Log returns and intraday Vol\n{comp} states")
+    plt.title(f"{key} Log returns and intraday Vol\n{model.n_components} states / best by {IC}")
 
-    for subplot, var in zip(range(1,4), ["Close", "log_rets", "gk_vol"]):    
-        plt.subplot(3,1,subplot)
+    for subplot, var in zip(range(1,3), data.columns):    
+        plt.subplot(2,1,subplot)
         for i in set(prediction):
             state = (prediction == i)
-            x = data[key].index[state]
-            y = data[key][var].iloc[state]
+            x = data.index[state]
+            y = data[var].iloc[state]
             plt.plot(x, y, '.')
         plt.legend(states, fontsize=16)
         
@@ -286,44 +269,25 @@ def plot_close_rets_vol(data, key, comp):
         plt.ylabel(var, fontsize=16)
             
     plt.savefig(os.path.join(resultsroute, "graphs", 
-                             f"{comp}_states", 
-                             f"{key}_model_{comp}.png"))
+                             f"HMM", 
+                             f"{key}_model_{IC}.png"))
 
 
 # In[ ]:
 
 
-for key in data.keys():
-    for comp in comps:
-        plot_close_rets_vol(data, key, comp)
+for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
+    for key, model in dictionary.items():
+        columns = [f'{stock}_log_rets', f'{stock}_gk_vol']
+        insample_data = df[columns]
+        oos_data=df_test[columns]
+        train_end=insample_data.index.max()
+        data=pd.concat([insample_data, oos_data])
 
-
-# ## Coefficients 
-
-# In[9]:
-
-
-models.keys()
-
-
-# In[10]:
-
-
-for model in models.keys()
-    print(model)
-    print("Matriz de transicion:")
-    print(model.transmat_)
-    print("Matriz de emisiones:")
-    print(model.means_)
+        plot_close_rets_vol(model, data, key, IC)
 
 
 # ## HMM Selection
 
 # Selecting the Number of States in Hidden Markov Models: Pragmatic Solutions Illustrated Using Animal Movement
 # https://sci-hub.st/10.1007/s13253-017-0283-8
-
-# In[ ]:
-
-
-
-
