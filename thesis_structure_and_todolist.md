@@ -58,10 +58,6 @@ Model selection criteria
 Newfile: Model comparer
 Think about how to port best HMM data and best ARMA-ARCH into a common comparison.
 
->Posiblemente requiera armar una funcion de chequeo que use model.monitor==True para chequear convergencia del modelo.  
-Recien ahi rankear por AIC&BIC
-https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.base.ConvergenceMonitor
-
 Hybrid models (if applicable)
 
 ### Chapter 5: Empirical Analysis
@@ -83,7 +79,6 @@ Sensitivity analysis
 
 Robustness tests (e.g., different data periods, alternative model specifications)
 Sensitivity to parameter choices
-> Attempt to force same day coefficients in VAR so that current day stock returns and vol have no effect on current day USD (SVAR)
 Monte Carlo simulations (if relevant)
 
 ### Chapter 8: Discussion
