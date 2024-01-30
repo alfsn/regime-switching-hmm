@@ -89,6 +89,9 @@ results_dict_df={stock:emptydf for stock in tickerlist}
 aic_best_model={stock:None for stock in tickerlist}
 bic_best_model={stock:None for stock in tickerlist}
 
+aic_best_lags={stock:None for stock in tickerlist}
+bic_best_lags={stock:None for stock in tickerlist}
+
 aic_best_residuals={stock:None for stock in tickerlist}
 bic_best_residuals={stock:None for stock in tickerlist}
 
@@ -96,7 +99,7 @@ bic_best_residuals={stock:None for stock in tickerlist}
 # In[11]:
 
 
-for stock in tickerlist:
+def create_select_best_VAR(stock:str, stock_data:pd.DataFrame):
     columns = [f'{stock}_log_rets', f'{stock}_gk_vol']
     stock_data = df[columns]
     
@@ -110,14 +113,23 @@ for stock in tickerlist:
     best_aic_lag=results_dict_df[stock]["AIC"].astype(float).idxmin()
     best_bic_lag=results_dict_df[stock]["BIC"].astype(float).idxmin()
 
+    aic_best_lags[stock]=best_aic_lag
+    bic_best_lags[stock]=best_bic_lag
+
     aic_best_model[stock]=VAR(stock_data).fit(best_aic_lag)
     bic_best_model[stock]=VAR(stock_data).fit(best_bic_lag)
 
-    aic_best_residuals[stock]=aic_best_model[stock].resid
-    bic_best_residuals[stock]=bic_best_model[stock].resid
-
 
 # In[12]:
+
+
+for stock in tickerlist:
+    columns = [f'{stock}_log_rets', f'{stock}_gk_vol']
+    stock_data = df[columns]
+    create_select_best_VAR(stock, stock_data)
+
+
+# In[13]:
 
 
 with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
@@ -127,10 +139,74 @@ with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_bic_best
     pickle.dump(bic_best_model, output_file)
 
 
-# Los modelos sirven los residuos NO!
-# https://github.com/alfsn/regime-switching-hmm/issues/27
+# # Generating residuals
 
-# In[13]:
+# In[14]:
+
+
+name=f'finaldf_test_{params["tablename"]}.pickle'
+filename=os.path.join(dataroute, name)
+with open(filename, 'rb') as handle:
+    df_test=pickle.load(handle)
+
+
+# In[15]:
+
+
+# TODO: comparar mismas cantidades de información
+# https://github.com/alfsn/regime-switching-hmm/issues/38
+
+
+# In[16]:
+
+
+def generate_VAR_samples_residuals(lags, insample_data, oos_data):
+        # pseudocodigo
+    # agarra el mejor modelo (esto con una cantidad optima de params ya esta)
+    # k = cantidad de params
+    # fittear t-j con t-j-252d
+    split_date = oos_data.index[0]
+    dates_to_forecast = len(oos_data.index)
+
+    oos_data = pd.concat([insample_data, oos_data])
+    del insample_data
+    
+    index = oos_data.index
+    end_loc = np.where(index >= split_date)[0].min()
+
+    rolling_window = 252
+
+    residuals=pd.DataFrame()
+
+    for i in range(1, dates_to_forecast):        
+        fitstart = end_loc - rolling_window + i
+        fitend = end_loc + i
+
+        stock_data = oos_data.iloc[fitstart:fitend]
+
+        model = VAR(stock_data)
+        results = model.fit(lags)
+
+        resid = results.resid.iloc[-1:]
+        residuals = pd.concat([residuals, resid], axis=0)
+    return residuals
+
+
+# In[17]:
+
+
+for stock in aic_best_lags.keys():
+    columns=[f"{stock}_log_rets", f"{stock}_gk_vol"]
+    aic_best_residuals[stock]=generate_VAR_samples_residuals(lags=aic_best_lags[stock], 
+                                                             insample_data=df[columns], 
+                                                             oos_data=df_test[columns])
+    bic_best_residuals[stock]=generate_VAR_samples_residuals(lags=bic_best_lags[stock], 
+                                                             insample_data=df[columns], 
+                                                             oos_data=df_test[columns])
+    
+
+
+# In[18]:
 
 
 with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
@@ -159,31 +235,16 @@ aic_best_residuals={stock:None for stock in tickerlist}
 bic_best_residuals={stock:None for stock in tickerlist}
 
 
-# In[16]:
+# In[19]:
 
 
 for stock in tickerlist:
     columns = ['USD_log_rets', 'USD_gk_vol', f'{stock}_log_rets', f'{stock}_gk_vol']
     stock_data = df[columns]
-    
-    for lag in range(1, 11):
-        model = VAR(stock_data)
-        results = model.fit(lag)
-
-        results_dict_df[stock].loc[lag, "AIC"]=results.aic
-        results_dict_df[stock].loc[lag, "BIC"]=results.bic
-
-    best_aic_lag=results_dict_df[stock]["AIC"].astype(float).idxmin()
-    best_bic_lag=results_dict_df[stock]["BIC"].astype(float).idxmin()
-
-    aic_best_model[stock]=VAR(stock_data).fit(best_aic_lag)
-    bic_best_model[stock]=VAR(stock_data).fit(best_bic_lag)
-
-    aic_best_residuals[stock]=aic_best_model[stock].resid
-    bic_best_residuals[stock]=bic_best_model[stock].resid
+    create_select_best_VAR(stock, stock_data)
 
 
-# In[17]:
+# In[20]:
 
 
 with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
@@ -193,10 +254,20 @@ with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_bic_be
     pickle.dump(bic_best_model, output_file)
 
 
-# Los modelos sirven los residuos NO!
-# https://github.com/alfsn/regime-switching-hmm/issues/27
+# In[21]:
 
-# In[18]:
+
+for stock in aic_best_lags.keys():
+    columns = ['USD_log_rets', 'USD_gk_vol', f'{stock}_log_rets', f'{stock}_gk_vol']
+    aic_best_residuals[stock]=generate_VAR_samples_residuals(lags=aic_best_lags[stock], 
+                                                             insample_data=df[columns], 
+                                                             oos_data=df_test[columns])
+    bic_best_residuals[stock]=generate_VAR_samples_residuals(lags=bic_best_lags[stock], 
+                                                             insample_data=df[columns], 
+                                                             oos_data=df_test[columns])
+
+
+# In[22]:
 
 
 with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:

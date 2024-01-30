@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[44]:
+# In[58]:
 
 
 import numpy as np
@@ -11,18 +11,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from hmmlearn import hmm
 
+import logging
 import os
 import pickle
 
 
-# In[45]:
+# In[61]:
+
+
+logging.captureWarnings(True)
+hmm.logging.disable(level=80)
+
+
+# In[2]:
 
 
 random_state=42
 np.random.seed(random_state)
 
 
-# In[46]:
+# In[3]:
 
 
 from scripts.params import get_params
@@ -32,7 +40,7 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[47]:
+# In[4]:
 
 
 dataroute=os.path.join("..",  "data")
@@ -40,7 +48,7 @@ dumproute=os.path.join("..",  "dump")
 resultsroute=os.path.join("..",  "results")
 
 
-# In[48]:
+# In[5]:
 
 
 name=f'finaldf_train_{params["tablename"]}.pickle'
@@ -49,13 +57,13 @@ with open(filename, 'rb') as handle:
     df=pickle.load(handle)
 
 
-# In[49]:
+# In[6]:
 
 
 df.head()
 
 
-# In[50]:
+# In[7]:
 
 
 tickerlist=params["tickerlist"]
@@ -63,7 +71,7 @@ tickerlist=params["tickerlist"]
 
 # ## HMM Training
 
-# In[51]:
+# In[8]:
 
 
 range_states=range(1,16)
@@ -72,14 +80,14 @@ emptydf.fillna(np.inf, inplace=True)
 results_dict_df={stock:emptydf for stock in tickerlist}
 
 
-# In[52]:
+# In[9]:
 
 
 aic_best_model={stock:None for stock in tickerlist}
 bic_best_model={stock:None for stock in tickerlist}
 
 
-# In[53]:
+# In[62]:
 
 
 for stock in tickerlist:
@@ -122,7 +130,7 @@ for stock in tickerlist:
             results_dict_df[stock].loc[nstate, "BIC"]=np.inf
 
 
-# In[54]:
+# In[63]:
 
 
 for stock in tickerlist:
@@ -139,7 +147,7 @@ for stock in tickerlist:
 
 # # Generating out of sample data
 
-# In[55]:
+# In[64]:
 
 
 name=f'finaldf_test_{params["tablename"]}.pickle'
@@ -148,81 +156,144 @@ with open(filename, 'rb') as handle:
     df_test=pickle.load(handle)
 
 
-# In[56]:
+# In[65]:
+
+
+def return_residuals(actual:pd.DataFrame, forecasts:pd.DataFrame):
+    residuals = (actual - forecasts).dropna()
+    return residuals
+
+
+# In[66]:
 
 
 def generate_HMM_samples_residuals(model, insample_data, oos_data):
+    """_summary_
+
+    Args:
+        model (_type_): _description_
+        insample_data (_type_): _description_
+        oos_data (_type_): _description_
     """
-    
-    """
-    # como el modelo es memoryless, sólo necesito 1 día de observación para saber en qué estado estoy
-    # por lo tanto, en vez de complicarme con dos datasets, puedo agregarle el ultimo día de insample_data al ppio de oos_data
     # pseudocodigo
-    oos_data=pd.concat([insample_data[-1:], oos_data])
+    # agarra el mejor modelo (esto con una cantidad optima de params ya esta)
+    # fittear t-j con t-j-252d
+    # Darle un año de datos hasta t-j para que me prediga la secuencia (probabilidad) de estados.
+        # Le pido que me prediga las probabilidades de cada estado durante el periodo t-j, t-j-252: 
+        # esto me da una matriz de (252 x n estados)
+        # esto entiendo es https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.hmm.GaussianHMM.predict_proba
+    # Tomo la ultima fila de la matriz
+    # Multiplico esa por el vector de medias estimadas: este punto es mi forecast. 
+        # esto es model.means_ (!)    
+    nstate=model.n_components
+    columns=oos_data.columns
+
+    split_date = oos_data.index[0]
+    dates_to_forecast = len(oos_data.index)
+
+    probabilities=pd.DataFrame(columns=range(nstate), index=oos_data.index)
+    forecasts=pd.DataFrame(columns=oos_data.columns, index=oos_data.index)
+
+    full_data = pd.concat([insample_data, oos_data])
     del insample_data
 
-    samples=pd.DataFrame(columns=oos_data.columns)
-    residuals=pd.DataFrame(columns=oos_data.columns)
-
-    # for i=0
-    for i in range(1,
-                   len(oos_data.index)):
-        prev_obs=oos_data[i-1:i]
-
-        todays_obs = oos_data[i:i+1]
-        todays_date = todays_obs.index
-
-        state=model.decode(prev_obs)[1][-1]
-        # decode()[0] is the log probability, decode()[1] is the sequence of states, [-1] is the last state
-        # since we have added the last datum of insample_data to oos_data, then the 
-            # TODO: revisar que tenga sentido decodear solo el ultimo día.
-            # La alternativa es agregar diez días de insample al principio y usar un decode con diez dias, 
-            # me quedo con el ultimo valor del array que maximiza la log-likelihood de la secuencia entera
-            # pero como es memoryless, not sure if it makesense
-        
-        sample = model.sample(n_samples=1, random_state=random_state, currstate=state)[0]
-        # sample()[0] is the array with observations of the sampled variables, sample()[1] is the value of the currstate
-        sample = pd.DataFrame(data=sample, columns=oos_data.columns, index=todays_date)
-
-        samples=pd.concat([samples, sample])   
-        # sampling given state t-1
-        # observar realización en t+i
-        residual = todays_obs-sample
-        
-        residuals=pd.concat([residuals, residual])
+    # vamos a implementar recursive window forecasting
     
-    return samples, residuals
+    index = full_data.index
+    end_loc = np.where(index >= split_date)[0].min()
+    # esto es un int del iloc
+    # preciso usar ints de iloc porque el timedelta se me va a romper con el fin de semana
+    rolling_window = 252
+
+    nstate=model.n_components
+    model = hmm.GaussianHMM(n_components = nstate, **param_dict, verbose=False)
+
+    model_list=[]
+    counter=0
+
+    for i in range(1, dates_to_forecast):
+        date_of_first_forecast = full_data.index[end_loc + i -1]
+        
+        fitstart = end_loc - rolling_window + i
+        fitend = end_loc + i
+
+        # fit model with last year
+        fit_data=full_data.iloc[fitstart:fitend][columns]
+        res=model.fit(fit_data)
+        model_list.append(res)
+        # TODO: que pasa si fittea mal?
+        
+        # obtenemos las probabilidades por estado del ultimo dia
+        # son las probabilidades que maximizan la log/likelihood de toda la secuencia
+        index=len(model_list)
+        while index>0:
+            try:
+                add_count=False
+                last_day_state_probs = res.predict_proba(fit_data)[-1]
+                probabilities.loc[date_of_first_forecast] = last_day_state_probs
+                index=0
+
+            except ValueError:
+                # this happens when startprob_ must sum to 1 (got nan)
+                # si el modelo falla en el predict_proba, se utiliza el de t-1
+                add_count=True
+                index=index-1
+                res=model_list[index]
+                
+        if add_count:
+            counter=counter+1
+        # model.means_ es es la media condicional a cada estado
+            # cada columna representa cada columna del dataset
+            # cada fila es un estado
+        # el producto punto entre este y las probabilidades del ultimo día me da la media esperada por cada columna
+        expected_means = np.dot(last_day_state_probs, model.means_)
+        forecasts.loc[date_of_first_forecast]=expected_means
+    
+    residuals = return_residuals(oos_data, forecasts)
+
+    print("failed models: ", counter)
+    return probabilities, forecasts, residuals
 
 
-# In[57]:
+# In[67]:
 
+
+aic_best_probabilities={stock:None for stock in tickerlist}
+bic_best_probabilities={stock:None for stock in tickerlist}
+
+aic_best_forecast={stock:None for stock in tickerlist}
+bic_best_forecast={stock:None for stock in tickerlist}
 
 aic_best_residuals={stock:None for stock in tickerlist}
 bic_best_residuals={stock:None for stock in tickerlist}
 
 
-# In[60]:
+# In[68]:
 
 
-for stock in tickerlist:
-    columns = [f'{stock}_log_rets', f'{stock}_gk_vol']
-    insample_data = df[columns]
-    oos_data=df_test[columns]
-
-    samples, aic_best_residuals[stock] = generate_HMM_samples_residuals(
-        aic_best_model[stock], 
-        insample_data=insample_data, 
-        oos_data=oos_data)
-
-    samples, bic_best_residuals[stock] = generate_HMM_samples_residuals(
-        bic_best_model[stock], 
-        insample_data=insample_data, 
-        oos_data=oos_data)
+for stock in aic_best_model.keys():
+    print(stock)
+    columns=[f"{stock}_log_rets", 
+             f"{stock}_gk_vol"]
+    probabilities, forecasts, residuals = generate_HMM_samples_residuals(aic_best_model[stock],
+                                                                         insample_data=df[columns], 
+                                                                         oos_data=df_test[columns])
+    aic_best_probabilities[stock]=probabilities
+    aic_best_probabilities[stock]=forecasts
+    aic_best_probabilities[stock]=residuals
+    
+    probabilities, forecasts, residuals = generate_HMM_samples_residuals(bic_best_model[stock],
+                                                                         insample_data=df[columns], 
+                                                                         oos_data=df_test[columns])
+    bic_best_probabilities[stock]=probabilities
+    bic_best_probabilities[stock]=forecasts
+    bic_best_probabilities[stock]=residuals
+    print()
 
 
 # # Guardado de datos
 
-# In[62]:
+# In[70]:
 
 
 with open(os.path.join(resultsroute, f"""HMM_univ_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
@@ -232,7 +303,7 @@ with open(os.path.join(resultsroute, f"""HMM_univ_{params["tablename"]}_bic_best
     pickle.dump(bic_best_model, output_file)
 
 
-# In[63]:
+# In[71]:
 
 
 with open(os.path.join(resultsroute, f"""HMM_univ_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
@@ -287,7 +358,10 @@ for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
         plot_close_rets_vol(model, data, key, IC)
 
 
-# ## HMM Selection
+# # With USD
 
-# Selecting the Number of States in Hidden Markov Models: Pragmatic Solutions Illustrated Using Animal Movement
-# https://sci-hub.st/10.1007/s13253-017-0283-8
+# In[ ]:
+
+
+
+

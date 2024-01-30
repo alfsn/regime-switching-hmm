@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[2]:
 
 
 import numpy as np
@@ -16,13 +16,13 @@ import os
 import pickle
 
 
-# In[2]:
+# In[3]:
 
 
 np.random.seed(42)
 
 
-# In[3]:
+# In[4]:
 
 
 from scripts.params import get_params
@@ -30,7 +30,7 @@ from scripts.params import get_params
 params = get_params()
 
 
-# In[4]:
+# In[5]:
 
 
 dataroute = os.path.join("..", "data")
@@ -40,13 +40,19 @@ resultsroute = os.path.join("..", "results")
 
 # ## Data Retrieval
 
-# In[5]:
+# In[6]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
 filename = os.path.join(dataroute, name)
 with open(filename, "rb") as handle:
     df = pickle.load(handle)
+
+
+# In[7]:
+
+
+df.head()
 
 
 # ## GARCH Training
@@ -57,6 +63,7 @@ with open(filename, "rb") as handle:
 
 
 # Define the range of p and q values
+alpha_values=[1,2,3,4] # estos son los valores de los lags in mean del AR.
 p_values = [1, 2, 3]  # Example: p values
 q_values = [0, 1, 2, 3]  # Example: q values
 # all models with q=0 are exclusively ARCH (non-GARCH)
@@ -233,6 +240,13 @@ def generate_GARCH_samples_residuals(
     return forecasts, residuals
 
 
+# In[ ]:
+
+
+# TODO: comparar mismas cantidades de información
+# https://github.com/alfsn/regime-switching-hmm/issues/38
+
+
 # In[103]:
 
 
@@ -300,9 +314,6 @@ with open(
 ) as output_file:
     pickle.dump(best_bic, output_file)
 
-
-# Los modelos sirven los residuos NO!
-# https://github.com/alfsn/regime-switching-hmm/issues/27
 
 # In[15]:
 
