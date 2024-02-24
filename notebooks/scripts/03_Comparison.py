@@ -4,17 +4,17 @@
 # # Comparison
 # 
 
-# In[2]:
+# In[26]:
 
 
 import pandas as pd
 import numpy as np
 import os
 
-pd.set_option('display.max_columns', None)
+pd.set_option("display.max_columns", None)
 
 
-# In[3]:
+# In[27]:
 
 
 from scripts.params import get_params
@@ -22,7 +22,7 @@ from scripts.params import get_params
 params = get_params()
 
 
-# In[4]:
+# In[28]:
 
 
 dataroute = os.path.join("..", "data")
@@ -30,7 +30,13 @@ dumproute = os.path.join("..", "dump")
 resultsroute = os.path.join("..", "results")
 
 
-# In[5]:
+# In[46]:
+
+
+start_test = params["start_test"]
+
+
+# In[29]:
 
 
 all_residuals = {}
@@ -43,7 +49,24 @@ for filename in os.listdir(resultsroute):
 print(all_residuals)
 
 
-# In[6]:
+# In[30]:
+
+
+def get_only_log_rets(dict_with_dfs: dict, stock: str):
+    if type(dict_with_dfs[stock]) == pd.Series:
+        # univariate models are saved as series
+        df = pd.DataFrame(dict_with_dfs[stock])
+
+    else:
+        try:
+            # multivariate models are saved as dataframes
+            df = pd.DataFrame(dict_with_dfs[stock][f"{stock}_log_rets"])
+        except:  # TODO: SACAR ESTO! Es un chanchullo pq hay algunas que son guardadas como None
+            pass
+    return df
+
+
+# In[48]:
 
 
 residual_df = pd.DataFrame()
@@ -51,43 +74,51 @@ residual_df = pd.DataFrame()
 for name, dir in all_residuals.items():
     dict_with_dfs = pd.read_pickle(dir)
     print(name)
+
     for stock in dict_with_dfs.keys():
-        if type(dict_with_dfs[stock]) == pd.Series:
-            # univariate models are saved as series
-            df = pd.DataFrame(dict_with_dfs[stock])
-        else:
-            try:
-                # multivariate models are saved as dataframes
-                df = pd.DataFrame(dict_with_dfs[stock][f"{stock}_log_rets"])
-            except:  # TODO: SACAR ESTO! Es un chanchullo pq hay algunas que son guardadas como None
-                pass
+        df = get_only_log_rets(dict_with_dfs, stock)
 
         modelname = (
             name.replace("residuals.pickle", "")
+            .replace("best", "")
             .replace(params["tablename"], "")
             .replace("__", "_")
             .replace("__", "_")
         )
+
         df.columns = [modelname + "_" + stock]
+
         residual_df = pd.merge(
             residual_df, df, left_index=True, right_index=True, how="outer"
         )
 
-
-# In[7]:
-
-
-residual_df.tail(4)
+residual_df.index = pd.to_datetime(residual_df.index)
+residual_df = residual_df[residual_df.index > start_test]
 
 
-# In[11]:
+# In[32]:
+
+
+def subset_of_columns(df: pd.DataFrame, substring: str):
+    filtered_columns = [col for col in df.columns if substring in col]
+    return df[filtered_columns]
+
+
+# In[58]:
+
+
+aic_residuals = subset_of_columns(residual_df, "aic")
+bic_residuals = subset_of_columns(residual_df, "bic")
+
+
+# In[52]:
 
 
 # estadisticos de nans
 (residual_df.isna().sum() / len(residual_df.index) * 100).describe()
 
 
-# In[28]:
+# In[53]:
 
 
 # estadisticos de nans
@@ -95,58 +126,42 @@ residual_df.tail(4)
 # VAR tiene problemas con NANs
 
 
-# In[38]:
+# In[59]:
 
 
-# separo entre aic y bic
-aic_residuals=pd.DataFrame(index=residual_df.index)
-bic_residuals=pd.DataFrame(index=residual_df.index)
-
-for criteria, df in {"aic":aic_residuals, "bic":bic_residuals}.items():
-    for column in residual_df.columns:
-        if criteria in column:
-            df[column]=residual_df[column].copy()
-            
-bic_residuals.tail()
-
-
-# In[56]:
-
-
-model_list = ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_univ"]
+model_list = ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]
 
 aggregating_dict = {"aic": {}, "bic": {}}
 
 for criteria, dataframe in zip(("aic", "bic"), (aic_residuals, bic_residuals)):
     for model in model_list:
-        filtered_columns = [col for col in dataframe.columns if model in col]
-        aggregating_dict[criteria][model] = dataframe[filtered_columns].copy()
+        aggregating_dict[criteria][model] = subset_of_columns(dataframe, model)
 
 aggregating_dict["bic"]["GARCH"].head()
 
 
-# In[83]:
+# In[63]:
 
 
 metrics_df = pd.DataFrame(index=["mse", "meanabs", "medianabs"])
 
-for criteria in aggregating_dict.keys():
-    for model in aggregating_dict[criteria].keys():
+for criteria, dictionary in aggregating_dict.items():
+    for model, dataframe in dictionary.items():
         metrics_df.loc["mse", f"{criteria}_{model}"] = (
-            ((aggregating_dict[criteria][model]) ** 2).mean().mean()
+            (dataframe**2).mean().mean()
         )
         metrics_df.loc["meanabs", f"{criteria}_{model}"] = (
-            ((aggregating_dict[criteria][model]).abs()).mean().mean()
+            dataframe.abs().mean().mean()
         )
         metrics_df.loc["medianabs", f"{criteria}_{model}"] = (
-            ((aggregating_dict[criteria][model]).abs()).median().median()
+            (dataframe.abs()).median().median()
         )
 
 metrics_df = metrics_df * 100
 metrics_df
 
 
-# In[87]:
+# In[64]:
 
 
 for criteria in ["aic", "bic"]:
@@ -154,8 +169,8 @@ for criteria in ["aic", "bic"]:
     filtered_columns = [col for col in metrics_df.columns if criteria in col]
     for metric in metrics_df.index:
         print(metric)
-        print(metrics_df[filtered_columns].loc[metric].idxmax())
-        print(np.round(metrics_df[filtered_columns].loc[metric].max(), 5))
+        print(metrics_df[filtered_columns].loc[metric].idxmin())
+        print(np.round(metrics_df[filtered_columns].loc[metric].min(), 5))
         print()
     print()
 

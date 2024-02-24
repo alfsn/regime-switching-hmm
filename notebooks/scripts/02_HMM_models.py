@@ -14,6 +14,7 @@ from hmmlearn import hmm
 import logging
 import os
 import pickle
+import warnings
 
 
 # In[2]:
@@ -121,70 +122,35 @@ def fit_hmm_model(
     contains_USD: bool,
 ):
 
-
     results_dict_df = {}
 
-
     for stock in tickerlist:
-
-
         results_dict_df[stock] = pd.DataFrame(
             index=range_states, columns=["AIC", "BIC"]
         )
-
-
         for nstate in range_states:
-
-
             columns = generate_columns(stock, contains_vol, contains_USD)
-
 
             insample_data = df[columns]
 
-
             model = hmm.GaussianHMM(n_components=nstate, **param_dict, verbose=False)
-
-
             results = model.fit(insample_data)
 
-
             convergence = results.monitor_.converged
-
-
             all_states_found = np.isclose(a=(model.transmat_.sum(axis=1)), b=1).all()
-
-
             startprob_check = model.startprob_.sum() == 1
-
-
             good_model = convergence and all_states_found and startprob_check
 
-
             if good_model:
-
-
                 try:
-
-
                     results_dict_df[stock].loc[nstate, "AIC"] = model.aic(insample_data)
-
-
                     results_dict_df[stock].loc[nstate, "BIC"] = model.bic(insample_data)
-
-
                 except ValueError:
                     pass
 
-
             else:
-
-
                 print(">" * 10, f"{stock} {nstate} did not converge")
-
-
                 results_dict_df[stock].loc[nstate, "AIC"] = np.inf
-
-
                 results_dict_df[stock].loc[nstate, "BIC"] = np.inf
 
     return results_dict_df
@@ -206,13 +172,7 @@ results_dict_df_with_vol = fit_hmm_model(
 )
 
 
-# In[16]:
-
-
-results_dict_df_with_vol["BBAR"]
-
-
-# In[17]:
+# In[15]:
 
 
 results_dict_df_multi = fit_hmm_model(
@@ -220,7 +180,7 @@ results_dict_df_multi = fit_hmm_model(
 )
 
 
-# In[18]:
+# In[16]:
 
 
 def select_best_model(
@@ -232,48 +192,32 @@ def select_best_model(
     contains_USD: bool,
 ):
     """"""
-
-
     aic_best_model = {stock: None for stock in tickerlist}
-
-
     bic_best_model = {stock: None for stock in tickerlist}
 
-
     for stock in tickerlist:
-
-
         columns = generate_columns(stock, contains_vol, contains_USD)
-
-
         insample_data = df[columns]
 
-
         best_aic_nstate = results_dict[stock]["AIC"].astype(float).idxmin()
-
-
         best_bic_nstate = results_dict[stock]["BIC"].astype(float).idxmin()
-
 
         print(
             f"For stock {stock}, best AIC: {best_aic_nstate} best BIC: {best_bic_nstate}"
         )
 
-
         aic_best_model[stock] = hmm.GaussianHMM(
             n_components=best_aic_nstate, **param_dict
         ).fit(insample_data)
 
-
-        bic_model[stock] = hmm.GaussianHMM(
+        bic_best_model[stock] = hmm.GaussianHMM(
             n_components=best_bic_nstate, **param_dict
         ).fit(insample_data)
-
 
     return aic_best_model, bic_best_model
 
 
-# In[19]:
+# In[17]:
 
 
 aic_best_model_univ, bic_best_model_univ = select_best_model(
@@ -286,7 +230,7 @@ aic_best_model_univ, bic_best_model_univ = select_best_model(
 )
 
 
-# In[20]:
+# In[18]:
 
 
 aic_best_model_with_vol, bic_best_model_with_vol = select_best_model(
@@ -299,7 +243,7 @@ aic_best_model_with_vol, bic_best_model_with_vol = select_best_model(
 )
 
 
-# In[21]:
+# In[19]:
 
 
 aic_best_model_multi, bic_best_model_multi = select_best_model(
@@ -314,7 +258,7 @@ aic_best_model_multi, bic_best_model_multi = select_best_model(
 
 # # Generating out of sample data
 
-# In[28]:
+# In[20]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -323,7 +267,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[29]:
+# In[21]:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
@@ -331,7 +275,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[47]:
+# In[22]:
 
 
 def generate_HMM_samples_residuals(model, insample_data, oos_data):
@@ -405,10 +349,10 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
                 add_count = True
                 index = index - 1
                 res = model_list[index]
-                
-                if not 'last_day_state_probs' in locals(): 
+
+                if not "last_day_state_probs" in locals():
                     # this checks for failure of estimation in the first day
-                    last_day_state_probs = np.full(nstate, (1/nstate))
+                    last_day_state_probs = np.full(nstate, (1 / nstate))
                     # inputs a flat prior if it has no previous day to fall back on
 
         if add_count:
@@ -420,13 +364,20 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
         expected_means = np.dot(last_day_state_probs, model.means_)
         forecasts.loc[date_of_first_forecast] = expected_means
 
+    pct_nan = forecasts.iloc[:, 0].isna().sum() / len(forecasts.index) * 100
+
+    if pct_nan > 5:
+        warnings.warn(f"{oos_data.columns[0]} % na: {pct_nan}")
+
+    forecasts.fillna(method="ffill", inplace=True)
+    
     residuals = return_residuals(oos_data, forecasts)
 
     print("failed models: ", counter)
     return probabilities, forecasts, residuals
 
 
-# In[48]:
+# In[23]:
 
 
 def save_resid(residuals: dict, modeltype: str, criterion: str):
@@ -440,7 +391,7 @@ def save_resid(residuals: dict, modeltype: str, criterion: str):
         pickle.dump(residuals, output_file)
 
 
-# In[49]:
+# In[24]:
 
 
 def generate_and_save_samples(
@@ -479,7 +430,7 @@ def generate_and_save_samples(
     # Note: this function does not save probabilities or forecasts
 
 
-# In[50]:
+# In[25]:
 
 
 models_dict = {
@@ -496,7 +447,7 @@ models_dict = {
 }
 
 
-# In[51]:
+# In[26]:
 
 
 for criterion, type_dict in models_dict.items():
@@ -519,7 +470,7 @@ for criterion, type_dict in models_dict.items():
 
 # # Graficando
 
-# In[ ]:
+# In[27]:
 
 
 def plot_close_rets_vol(model, data, key, IC):
@@ -548,16 +499,16 @@ def plot_close_rets_vol(model, data, key, IC):
     plt.savefig(os.path.join(resultsroute, "graphs", f"HMM", f"{key}_model_{IC}.png"))
 
 
-# In[ ]:
+# In[29]:
 
 
-for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
-    for key, model in dictionary.items():
-        columns = [f"{stock}_log_rets", f"{stock}_gk_vol"]
-        insample_data = df[columns]
-        oos_data = df_test[columns]
-        train_end = insample_data.index.max()
-        data = pd.concat([insample_data, oos_data])
-
-        plot_close_rets_vol(model, data, key, IC)
+#for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
+#    for key, model in dictionary.items():
+#        columns = [f"{stock}_log_rets", f"{stock}_gk_vol"]
+#        insample_data = df[columns]
+#        oos_data = df_test[columns]
+#        train_end = insample_data.index.max()
+#        data = pd.concat([insample_data, oos_data])
+#
+#        plot_close_rets_vol(model, data, key, IC)
 
