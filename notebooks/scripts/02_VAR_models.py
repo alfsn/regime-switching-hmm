@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[36]:
 
 
 import numpy as np
@@ -13,32 +13,34 @@ import matplotlib.pyplot as plt
 from statsmodels.tsa.api import VAR
 from statsmodels.tools.eval_measures import aic, bic
 
+import copy
 import os
 import pickle
-
-
-# In[2]:
-
-
-import warnings
-warnings.filterwarnings("ignore")
-
-
-# In[3]:
-
-
-np.random.seed(42)
 
 
 # In[4]:
 
 
-dataroute=os.path.join("..",  "data")
-dumproute=os.path.join("..",  "dump")
-resultsroute=os.path.join("..",  "results")
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 # In[5]:
+
+
+np.random.seed(42)
+
+
+# In[6]:
+
+
+dataroute = os.path.join("..", "data")
+dumproute = os.path.join("..", "dump")
+resultsroute = os.path.join("..", "results")
+
+
+# In[7]:
 
 
 from scripts.params import get_params
@@ -48,137 +50,98 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[6]:
+# In[18]:
 
 
-name=f"""processed_train_{params["tablename"]}.pickle"""
-filename=os.path.join(dataroute, name)
-with open(filename, 'rb') as handle:
-    data=pickle.load(handle)
+name = f"""finaldf_train_{params["tablename"]}.pickle"""
+filename = os.path.join(dataroute, name)
+with open(filename, "rb") as handle:
+    df = pickle.load(handle)
     
-name=f"""finaldf_train_{params["tablename"]}.pickle"""
-filename=os.path.join(dataroute, name)
-with open(filename, 'rb') as handle:
-    df=pickle.load(handle)
+name = f'finaldf_test_{params["tablename"]}.pickle'
+filename = os.path.join(dataroute, name)
+with open(filename, "rb") as handle:
+    df_test = pickle.load(handle)
 
 
-# In[7]:
+# In[19]:
 
 
-tickerlist=params["tickerlist"]
+tickerlist = params["tickerlist"]
 
 
-# In[8]:
+# In[22]:
 
 
-df.head(3)
+df.head(1)
 
 
-# # VAR Training
-
-# In[9]:
+# In[21]:
 
 
-emptydf=pd.DataFrame(columns=["AIC", "BIC"], index=range(1,11))
-results_dict_df={stock:emptydf for stock in tickerlist}
-
-
-# In[10]:
-
-
-aic_best_model={stock:None for stock in tickerlist}
-bic_best_model={stock:None for stock in tickerlist}
-
-aic_best_lags={stock:None for stock in tickerlist}
-bic_best_lags={stock:None for stock in tickerlist}
-
-aic_best_residuals={stock:None for stock in tickerlist}
-bic_best_residuals={stock:None for stock in tickerlist}
+df_test.head(1)
 
 
 # In[11]:
 
 
-def create_select_best_VAR(stock:str, stock_data:pd.DataFrame):
-    columns = [f'{stock}_log_rets', f'{stock}_gk_vol']
-    stock_data = df[columns]
-    
-    for lag in range(1, 11):
-        model = VAR(stock_data)
-        results = model.fit(lag)
+def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
+    """Devuelve una lista con los nombres de columnas para distintas especificaciones"""
+    columns = []
+    columns.append(f"{stock}_log_rets")
 
-        results_dict_df[stock].loc[lag, "AIC"]=results.aic
-        results_dict_df[stock].loc[lag, "BIC"]=results.bic
+    if contains_vol:
+        columns.append(f"{stock}_gk_vol")
 
-    best_aic_lag=results_dict_df[stock]["AIC"].astype(float).idxmin()
-    best_bic_lag=results_dict_df[stock]["BIC"].astype(float).idxmin()
+    if contains_USD:
+        columns.append(f"USD_log_rets")
+        columns.append(f"USD_gk_vol")
 
-    aic_best_lags[stock]=best_aic_lag
-    bic_best_lags[stock]=best_bic_lag
-
-    aic_best_model[stock]=VAR(stock_data).fit(best_aic_lag)
-    bic_best_model[stock]=VAR(stock_data).fit(best_bic_lag)
-
-
-# In[12]:
-
-
-for stock in tickerlist:
-    columns = [f'{stock}_log_rets', f'{stock}_gk_vol']
-    stock_data = df[columns]
-    create_select_best_VAR(stock, stock_data)
-
-
-# In[13]:
-
-
-with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
-    pickle.dump(aic_best_model, output_file)
-
-with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_bic_bestmodels.pickle"""), "wb") as output_file:
-    pickle.dump(bic_best_model, output_file)
-
-
-# # Generating residuals
-
-# In[14]:
-
-
-name=f'finaldf_test_{params["tablename"]}.pickle'
-filename=os.path.join(dataroute, name)
-with open(filename, 'rb') as handle:
-    df_test=pickle.load(handle)
+    return columns
 
 
 # In[15]:
 
 
-# TODO: comparar mismas cantidades de información
-# https://github.com/alfsn/regime-switching-hmm/issues/38
+selected_orders = VAR(df[["BBAR_log_rets", "BBAR_gk_vol"]]).select_order(
+    maxlags=None, trend="c"
+)
+selected_orders.selected_orders
 
 
-# In[16]:
+# In[31]:
 
 
-def generate_VAR_samples_residuals(lags, insample_data, oos_data):
-        # pseudocodigo
+def generate_VAR_samples_residuals(
+    stock: str,
+    lags: int,
+    insample_data: pd.DataFrame,
+    oos_data: pd.DataFrame,
+    contains_vol: bool,
+    contains_USD: bool,
+):
+    # pseudocodigo
     # agarra el mejor modelo (esto con una cantidad optima de params ya esta)
     # k = cantidad de params
     # fittear t-j con t-j-252d
+    columns = generate_columns(
+        stock=stock, contains_vol=contains_vol, contains_USD=contains_USD
+    )
+
     split_date = oos_data.index[0]
     dates_to_forecast = len(oos_data.index)
 
-    oos_data = pd.concat([insample_data, oos_data])
+    oos_data = pd.concat([insample_data[columns], oos_data[columns]])
     del insample_data
-    
+
     index = oos_data.index
     end_loc = np.where(index >= split_date)[0].min()
 
     rolling_window = 252
 
-    residuals=pd.DataFrame()
+    residuals = pd.DataFrame()
 
-    for i in range(1, dates_to_forecast):        
+    for i in range(1, dates_to_forecast):
         fitstart = end_loc - rolling_window + i
         fitend = end_loc + i
 
@@ -186,93 +149,104 @@ def generate_VAR_samples_residuals(lags, insample_data, oos_data):
 
         model = VAR(stock_data)
         results = model.fit(lags)
-
+        
         resid = results.resid.iloc[-1:]
         residuals = pd.concat([residuals, resid], axis=0)
+        
     return residuals
 
 
-# In[17]:
+# In[32]:
 
 
-for stock in aic_best_lags.keys():
-    columns=[f"{stock}_log_rets", f"{stock}_gk_vol"]
-    aic_best_residuals[stock]=generate_VAR_samples_residuals(lags=aic_best_lags[stock], 
-                                                             insample_data=df[columns], 
-                                                             oos_data=df_test[columns])
-    bic_best_residuals[stock]=generate_VAR_samples_residuals(lags=bic_best_lags[stock], 
-                                                             insample_data=df[columns], 
-                                                             oos_data=df_test[columns])
+def estimate_best_residuals(
+    stock: str,
+    criterion: str,
+    insample_data: pd.DataFrame,
+    oos_data: pd.DataFrame,
+    contains_vol: bool,
+    contains_USD: bool,
+):
+    columns = generate_columns(
+        stock=stock, contains_vol=contains_vol, contains_USD=contains_USD
+    )
+
+    selected_orders = VAR(insample_data[columns]).select_order(maxlags=15, trend="c")
+    best_lag = selected_orders.selected_orders[criterion]
+
+    residuals = generate_VAR_samples_residuals(
+        stock=stock,
+        lags=best_lag,
+        insample_data=insample_data,
+        oos_data=oos_data,
+        contains_vol=contains_vol,
+        contains_USD=contains_USD,
+    )
     
+    return best_lag, residuals
 
 
-# In[18]:
+# In[50]:
 
 
-with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
-    pickle.dump(aic_best_residuals, output_file)
-
-with open(os.path.join(resultsroute, f"""VAR_univ_{params["tablename"]}_bic_residuals.pickle"""), "wb") as output_file:
-    pickle.dump(bic_best_residuals, output_file)
-
-
-# # with USD
-
-# In[14]:
-
-
-emptydf=pd.DataFrame(columns=["AIC", "BIC"], index=range(1,11))
-results_dict_df={stock:emptydf for stock in tickerlist}
-
-
-# In[15]:
+def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
+    if contains_USD:
+        string="multiv"
+    else:
+        string="with_vol"
+    
+    with open(
+        os.path.join(
+            resultsroute,
+            f"""VAR_{string}_{params["tablename"]}_{criterion}_best_{type_save}.pickle""",
+        ),
+        "wb",
+    ) as output_file:
+        pickle.dump(data, output_file)
 
 
-aic_best_model={stock:None for stock in tickerlist}
-bic_best_model={stock:None for stock in tickerlist}
-
-aic_best_residuals={stock:None for stock in tickerlist}
-bic_best_residuals={stock:None for stock in tickerlist}
+# In[51]:
 
 
-# In[19]:
+best_lags = {
+    "aic": {"contains_USD=True": {}, "contains_USD=False": {}},
+    "bic": {"contains_USD=True": {}, "contains_USD=False": {}},
+}
+
+best_residuals = copy.deepcopy(best_lags)
+
+for criterion in ["aic", "bic"]:
+    for contains_USD in [True, False]:
+        for stock in tickerlist:
+            usdstring = f"contains_USD={contains_USD}"
+            best_lag, residuals = estimate_best_residuals(
+                stock=stock,
+                criterion=criterion,
+                insample_data=df,
+                oos_data=df_test,
+                contains_vol=True,
+                contains_USD=contains_USD,
+            )
+
+            best_lags[criterion][usdstring][stock] = best_lag
+            best_residuals[criterion][usdstring][stock] = residuals
+
+        save_as_pickle(
+            data=best_lags[criterion][usdstring],
+            contains_USD=contains_USD,
+            criterion=criterion,
+            type_save="lags",
+        )
+        save_as_pickle(
+            data=best_residuals[criterion][usdstring],
+            contains_USD=contains_USD,
+            criterion=criterion,
+            type_save="residuals",
+        )
 
 
-for stock in tickerlist:
-    columns = ['USD_log_rets', 'USD_gk_vol', f'{stock}_log_rets', f'{stock}_gk_vol']
-    stock_data = df[columns]
-    create_select_best_VAR(stock, stock_data)
+# In[52]:
 
 
-# In[20]:
-
-
-with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_aic_bestmodels.pickle"""), "wb") as output_file:
-    pickle.dump(aic_best_model, output_file)
-
-with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_bic_bestmodels.pickle"""), "wb") as output_file:
-    pickle.dump(bic_best_model, output_file)
-
-
-# In[21]:
-
-
-for stock in aic_best_lags.keys():
-    columns = ['USD_log_rets', 'USD_gk_vol', f'{stock}_log_rets', f'{stock}_gk_vol']
-    aic_best_residuals[stock]=generate_VAR_samples_residuals(lags=aic_best_lags[stock], 
-                                                             insample_data=df[columns], 
-                                                             oos_data=df_test[columns])
-    bic_best_residuals[stock]=generate_VAR_samples_residuals(lags=bic_best_lags[stock], 
-                                                             insample_data=df[columns], 
-                                                             oos_data=df_test[columns])
-
-
-# In[22]:
-
-
-with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_aic_residuals.pickle"""), "wb") as output_file:
-    pickle.dump(aic_best_residuals, output_file)
-
-with open(os.path.join(resultsroute, f"""VAR_multiv_{params["tablename"]}_bic_residuals.pickle"""), "wb") as output_file:
-    pickle.dump(bic_best_residuals, output_file)
+best_residuals["aic"]["contains_USD=True"]["BBAR"]
 
