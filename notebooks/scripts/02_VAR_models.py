@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[36]:
+# In[1]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import os
 import pickle
 
 
-# In[4]:
+# In[2]:
 
 
 import warnings
@@ -26,13 +26,13 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-# In[5]:
+# In[3]:
 
 
 np.random.seed(42)
 
 
-# In[6]:
+# In[4]:
 
 
 dataroute = os.path.join("..", "data")
@@ -40,7 +40,7 @@ dumproute = os.path.join("..", "dump")
 resultsroute = os.path.join("..", "results")
 
 
-# In[7]:
+# In[5]:
 
 
 from scripts.params import get_params
@@ -50,7 +50,7 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[18]:
+# In[6]:
 
 
 name = f"""finaldf_train_{params["tablename"]}.pickle"""
@@ -64,25 +64,25 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[19]:
+# In[7]:
 
 
 tickerlist = params["tickerlist"]
 
 
-# In[22]:
+# In[8]:
 
 
 df.head(1)
 
 
-# In[21]:
+# In[9]:
 
 
 df_test.head(1)
 
 
-# In[11]:
+# In[10]:
 
 
 def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
@@ -100,7 +100,7 @@ def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
     return columns
 
 
-# In[15]:
+# In[11]:
 
 
 selected_orders = VAR(df[["BBAR_log_rets", "BBAR_gk_vol"]]).select_order(
@@ -109,7 +109,7 @@ selected_orders = VAR(df[["BBAR_log_rets", "BBAR_gk_vol"]]).select_order(
 selected_orders.selected_orders
 
 
-# In[31]:
+# In[12]:
 
 
 def generate_VAR_samples_residuals(
@@ -183,10 +183,12 @@ def estimate_best_residuals(
         contains_USD=contains_USD,
     )
     
+    assert type(residuals)==pd.DataFrame
+    
     return best_lag, residuals
 
 
-# In[50]:
+# In[33]:
 
 
 def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
@@ -205,7 +207,7 @@ def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
         pickle.dump(data, output_file)
 
 
-# In[51]:
+# In[42]:
 
 
 best_lags = {
@@ -217,8 +219,9 @@ best_residuals = copy.deepcopy(best_lags)
 
 for criterion in ["aic", "bic"]:
     for contains_USD in [True, False]:
+        usdstring = f"contains_USD={contains_USD}"
+
         for stock in tickerlist:
-            usdstring = f"contains_USD={contains_USD}"
             best_lag, residuals = estimate_best_residuals(
                 stock=stock,
                 criterion=criterion,
@@ -228,7 +231,15 @@ for criterion in ["aic", "bic"]:
                 contains_USD=contains_USD,
             )
 
+            pct_nan = residuals.iloc[:, 0].isna().sum() / len(residuals.index) * 100
+
+            if pct_nan > 5:
+                warnings.warn(f"{stock} % na: {pct_nan}")
+
+            residuals.fillna(method="ffill", inplace=True)
+
             best_lags[criterion][usdstring][stock] = best_lag
+            
             best_residuals[criterion][usdstring][stock] = residuals
 
         save_as_pickle(
@@ -243,10 +254,4 @@ for criterion in ["aic", "bic"]:
             criterion=criterion,
             type_save="residuals",
         )
-
-
-# In[52]:
-
-
-best_residuals["aic"]["contains_USD=True"]["BBAR"]
 
