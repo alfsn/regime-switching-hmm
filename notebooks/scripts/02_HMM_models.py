@@ -370,7 +370,7 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
         warnings.warn(f"{oos_data.columns[0]} % na: {pct_nan}")
 
     forecasts.fillna(method="ffill", inplace=True)
-    
+
     residuals = return_residuals(oos_data, forecasts)
 
     print("failed models: ", counter)
@@ -380,15 +380,15 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
 # In[23]:
 
 
-def save_resid(residuals: dict, modeltype: str, criterion: str):
+def save_as_pickle(data, modeltype: str, criterion: str, type_save: str):
     with open(
         os.path.join(
             resultsroute,
-            f"""HMM_{modeltype}_{params["tablename"]}_{criterion}_residuals.pickle""",
+            f"""HMM_{modeltype}_{params["tablename"]}_{criterion}_best_{type_save}.pickle""",
         ),
         "wb",
     ) as output_file:
-        pickle.dump(residuals, output_file)
+        pickle.dump(data, output_file)
 
 
 # In[24]:
@@ -426,8 +426,12 @@ def generate_and_save_samples(
         forecasts[stock] = fcast
         residuals[stock] = resid
 
-    save_resid(residuals=residuals, modeltype=modeltype, criterion=criterion)
-    # Note: this function does not save probabilities or forecasts
+    save_as_pickle(
+        data=residuals, modeltype=modeltype, criterion=criterion, type_save="residuals"
+    )
+    save_as_pickle(
+        data=forecasts, modeltype=modeltype, criterion=criterion, type_save="forecasts"
+    )
 
 
 # In[25]:
@@ -499,10 +503,10 @@ def plot_close_rets_vol(model, data, key, IC):
     plt.savefig(os.path.join(resultsroute, "graphs", f"HMM", f"{key}_model_{IC}.png"))
 
 
-# In[29]:
+# In[28]:
 
 
-#for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
+# for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
 #    for key, model in dictionary.items():
 #        columns = [f"{stock}_log_rets", f"{stock}_gk_vol"]
 #        insample_data = df[columns]

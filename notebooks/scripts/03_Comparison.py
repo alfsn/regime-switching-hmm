@@ -4,7 +4,7 @@
 # # Comparison
 # 
 
-# In[26]:
+# In[2]:
 
 
 import pandas as pd
@@ -14,7 +14,7 @@ import os
 pd.set_option("display.max_columns", None)
 
 
-# In[27]:
+# In[3]:
 
 
 from scripts.params import get_params
@@ -22,7 +22,19 @@ from scripts.params import get_params
 params = get_params()
 
 
-# In[28]:
+# In[19]:
+
+
+from epftoolbox.evaluation import DM, GW, plot_multivariate_GW_test, plot_multivariate_DM_test
+
+# note: to install this package, execute
+    #git clone https://github.com/jeslago/epftoolbox.git
+    #cd epftoolbox
+    #pip install .
+# may also need to modify epftoolbox/setup.py to be able to install it after python 3.11
+
+
+# In[5]:
 
 
 dataroute = os.path.join("..", "data")
@@ -30,13 +42,13 @@ dumproute = os.path.join("..", "dump")
 resultsroute = os.path.join("..", "results")
 
 
-# In[46]:
+# In[6]:
 
 
 start_test = params["start_test"]
 
 
-# In[29]:
+# In[7]:
 
 
 all_residuals = {}
@@ -49,7 +61,7 @@ for filename in os.listdir(resultsroute):
 print(all_residuals)
 
 
-# In[30]:
+# In[8]:
 
 
 def get_only_log_rets(dict_with_dfs: dict, stock: str):
@@ -66,7 +78,7 @@ def get_only_log_rets(dict_with_dfs: dict, stock: str):
     return df
 
 
-# In[48]:
+# In[9]:
 
 
 residual_df = pd.DataFrame()
@@ -96,7 +108,7 @@ residual_df.index = pd.to_datetime(residual_df.index)
 residual_df = residual_df[residual_df.index > start_test]
 
 
-# In[32]:
+# In[10]:
 
 
 def subset_of_columns(df: pd.DataFrame, substring: str):
@@ -104,26 +116,61 @@ def subset_of_columns(df: pd.DataFrame, substring: str):
     return df[filtered_columns]
 
 
-# In[58]:
+# In[11]:
 
 
 aic_residuals = subset_of_columns(residual_df, "aic")
 bic_residuals = subset_of_columns(residual_df, "bic")
 
 
-# In[52]:
+# In[12]:
 
 
 # estadisticos de nans
 (residual_df.isna().sum() / len(residual_df.index) * 100).describe()
 
 
-# In[53]:
+# In[13]:
 
 
 # estadisticos de nans
 ((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
 # VAR tiene problemas con NANs
+
+
+# In[17]:
+
+
+stock_dict={}
+
+for stock in params["tickerlist"]:
+     stock_dict[stock]= subset_of_columns(residual_df, stock)
+
+
+# In[43]:
+
+
+pd.DataFrame(np.zeros_like(stock_dict[stock].iloc[:,0]))
+
+
+# In[48]:
+
+
+stock_dict[stock].iloc[:,0].reset_index(drop=True)
+
+
+# In[49]:
+
+
+plot_multivariate_DM_test(real_price=pd.DataFrame(np.zeros_like(stock_dict[stock].iloc[:,0])), 
+                          forecasts=stock_dict[stock].reset_index(drop=True), 
+                          title=f"DM test {stock}")
+
+
+# In[ ]:
+
+
+
 
 
 # In[59]:
@@ -173,4 +220,16 @@ for criteria in ["aic", "bic"]:
         print(np.round(metrics_df[filtered_columns].loc[metric].min(), 5))
         print()
     print()
+
+
+# In[ ]:
+
+
+DM(p_real=0,)
+
+
+# In[ ]:
+
+
+
 

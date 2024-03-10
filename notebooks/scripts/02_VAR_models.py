@@ -57,7 +57,7 @@ name = f"""finaldf_train_{params["tablename"]}.pickle"""
 filename = os.path.join(dataroute, name)
 with open(filename, "rb") as handle:
     df = pickle.load(handle)
-    
+
 name = f'finaldf_test_{params["tablename"]}.pickle'
 filename = os.path.join(dataroute, name)
 with open(filename, "rb") as handle:
@@ -73,7 +73,7 @@ tickerlist = params["tickerlist"]
 # In[8]:
 
 
-df.head(1)
+df.tail(1)
 
 
 # In[9]:
@@ -112,6 +112,18 @@ selected_orders.selected_orders
 # In[12]:
 
 
+df.tail()
+
+
+# In[13]:
+
+
+df_test.head()
+
+
+# In[14]:
+
+
 def generate_VAR_samples_residuals(
     stock: str,
     lags: int,
@@ -120,43 +132,40 @@ def generate_VAR_samples_residuals(
     contains_vol: bool,
     contains_USD: bool,
 ):
-    # pseudocodigo
-    # agarra el mejor modelo (esto con una cantidad optima de params ya esta)
-    # k = cantidad de params
-    # fittear t-j con t-j-252d
     columns = generate_columns(
         stock=stock, contains_vol=contains_vol, contains_USD=contains_USD
     )
 
+    combined_data = pd.concat([insample_data[columns], oos_data[columns]])
+
     split_date = oos_data.index[0]
-    dates_to_forecast = len(oos_data.index)
+    dates_to_forecast = len(oos_data)
 
-    oos_data = pd.concat([insample_data[columns], oos_data[columns]])
-    del insample_data
-
-    index = oos_data.index
-    end_loc = np.where(index >= split_date)[0].min()
-
-    rolling_window = 252
-
+    forecasts = pd.DataFrame()
     residuals = pd.DataFrame()
 
     for i in range(1, dates_to_forecast):
-        fitstart = end_loc - rolling_window + i
-        fitend = end_loc + i
+        end_loc = combined_data.index.get_loc(split_date) + i
+        fitstart = end_loc - 252
+        fitend = end_loc
 
-        stock_data = oos_data.iloc[fitstart:fitend]
+        stock_data = combined_data.iloc[fitstart:fitend]
 
         model = VAR(stock_data)
         results = model.fit(lags)
-        
-        resid = results.resid.iloc[-1:]
-        residuals = pd.concat([residuals, resid], axis=0)
-        
-    return residuals
+
+        fcast = results.forecast(y=stock_data.values, steps=1)
+        fcast_df = pd.DataFrame(fcast, columns=columns)
+
+        resid = results.resid.iloc[-1:].rename({0: 'residual'}, axis=1)
+
+        forecasts = pd.concat([forecasts, fcast_df], ignore_index=True)
+        residuals = pd.concat([residuals, resid], ignore_index=True)
+
+    return forecasts, residuals
 
 
-# In[32]:
+# In[15]:
 
 
 def estimate_best_residuals(
@@ -174,7 +183,7 @@ def estimate_best_residuals(
     selected_orders = VAR(insample_data[columns]).select_order(maxlags=15, trend="c")
     best_lag = selected_orders.selected_orders[criterion]
 
-    residuals = generate_VAR_samples_residuals(
+    forecasts, residuals = generate_VAR_samples_residuals(
         stock=stock,
         lags=best_lag,
         insample_data=insample_data,
@@ -182,21 +191,21 @@ def estimate_best_residuals(
         contains_vol=contains_vol,
         contains_USD=contains_USD,
     )
-    
-    assert type(residuals)==pd.DataFrame
-    
-    return best_lag, residuals
+
+    assert type(residuals) == pd.DataFrame
+
+    return best_lag, forecasts, residuals
 
 
-# In[33]:
+# In[16]:
 
 
 def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
     if contains_USD:
-        string="multiv"
+        string = "multiv"
     else:
-        string="with_vol"
-    
+        string = "with_vol"
+
     with open(
         os.path.join(
             resultsroute,
@@ -207,14 +216,14 @@ def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
         pickle.dump(data, output_file)
 
 
-# In[42]:
+# In[17]:
 
 
 best_lags = {
     "aic": {"contains_USD=True": {}, "contains_USD=False": {}},
     "bic": {"contains_USD=True": {}, "contains_USD=False": {}},
 }
-
+best_forecasts = copy.deepcopy(best_lags)
 best_residuals = copy.deepcopy(best_lags)
 
 for criterion in ["aic", "bic"]:
@@ -222,7 +231,7 @@ for criterion in ["aic", "bic"]:
         usdstring = f"contains_USD={contains_USD}"
 
         for stock in tickerlist:
-            best_lag, residuals = estimate_best_residuals(
+            best_lag, forecasts, residuals = estimate_best_residuals(
                 stock=stock,
                 criterion=criterion,
                 insample_data=df,
@@ -231,15 +240,16 @@ for criterion in ["aic", "bic"]:
                 contains_USD=contains_USD,
             )
 
-            pct_nan = residuals.iloc[:, 0].isna().sum() / len(residuals.index) * 100
+            pct_nan = forecasts.iloc[:, 0].isna().sum() / len(forecasts.index) * 100
 
             if pct_nan > 5:
                 warnings.warn(f"{stock} % na: {pct_nan}")
 
+            forecasts.fillna(method="ffill", inplace=True)
             residuals.fillna(method="ffill", inplace=True)
 
             best_lags[criterion][usdstring][stock] = best_lag
-            
+            best_forecasts[criterion][usdstring][stock] = forecasts
             best_residuals[criterion][usdstring][stock] = residuals
 
         save_as_pickle(
@@ -247,6 +257,12 @@ for criterion in ["aic", "bic"]:
             contains_USD=contains_USD,
             criterion=criterion,
             type_save="lags",
+        )
+        save_as_pickle(
+            data=best_forecasts[criterion][usdstring],
+            contains_USD=contains_USD,
+            criterion=criterion,
+            type_save="forecasts",
         )
         save_as_pickle(
             data=best_residuals[criterion][usdstring],
