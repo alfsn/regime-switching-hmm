@@ -39,3 +39,5 @@ stocksdict:
  - 3
 
 local_suffix: ".BA"
+
+model_list: ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]
