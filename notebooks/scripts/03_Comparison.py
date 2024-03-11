@@ -4,17 +4,18 @@
 # # Comparison
 # 
 
-# In[26]:
+# In[2]:
 
 
 import pandas as pd
 import numpy as np
 import os
+import pickle
 
 pd.set_option("display.max_columns", None)
 
 
-# In[27]:
+# In[3]:
 
 
 from scripts.params import get_params
@@ -22,34 +23,60 @@ from scripts.params import get_params
 params = get_params()
 
 
-# In[28]:
+# In[4]:
+
+
+from scripts.epftoolbox_dm_gw import DM, plot_multivariate_DM_test, GW, plot_multivariate_GW_test
+
+
+# In[5]:
 
 
 dataroute = os.path.join("..", "data")
 dumproute = os.path.join("..", "dump")
 resultsroute = os.path.join("..", "results")
+graphsroute = os.path.join(resultsroute, "graphs")
 
 
-# In[46]:
+# In[6]:
 
 
 start_test = params["start_test"]
+local_suffix = params["local_suffix"]
 
 
-# In[29]:
+# In[7]:
 
 
-all_residuals = {}
-
-for filename in os.listdir(resultsroute):
-    file_path = os.path.join(resultsroute, filename)
-    if os.path.isfile(file_path) and "residual" in filename:
-        all_residuals[filename] = file_path
-
-print(all_residuals)
+name = f'finaldf_test_{params["tablename"]}.pickle'
+filename = os.path.join(dataroute, name)
+with open(filename, "rb") as handle:
+    df_test = pickle.load(handle)
 
 
-# In[30]:
+# In[8]:
+
+
+def get_all_results_matching(substring:str):
+    all_results = {}
+
+    for filename in os.listdir(resultsroute):
+        file_path = os.path.join(resultsroute, filename)
+        if os.path.isfile(file_path) and substring in filename:
+            all_results[filename] = file_path
+
+    print(all_results)
+    return all_results
+
+
+# In[9]:
+
+
+all_forecasts = get_all_results_matching("forecast")
+all_residuals = get_all_results_matching("residual")
+
+
+# In[10]:
 
 
 def get_only_log_rets(dict_with_dfs: dict, stock: str):
@@ -66,111 +93,176 @@ def get_only_log_rets(dict_with_dfs: dict, stock: str):
     return df
 
 
-# In[48]:
+# In[11]:
 
 
-residual_df = pd.DataFrame()
+def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
+    created_df = pd.DataFrame()
 
-for name, dir in all_residuals.items():
-    dict_with_dfs = pd.read_pickle(dir)
-    print(name)
+    for name, dir in results_dict.items():
+        dict_with_dfs = pd.read_pickle(dir)
+        print(name)
 
-    for stock in dict_with_dfs.keys():
-        df = get_only_log_rets(dict_with_dfs, stock)
+        for stock in dict_with_dfs.keys():
+            df = get_only_log_rets(dict_with_dfs, stock)
 
-        modelname = (
-            name.replace("residuals.pickle", "")
-            .replace("best", "")
-            .replace(params["tablename"], "")
-            .replace("__", "_")
-            .replace("__", "_")
-        )
+            modelname = (
+                name.replace(f"{substring_to_replace}.pickle", "")
+                .replace("best", "")
+                .replace(params["tablename"], "")
+                .replace("__", "_")
+                .replace("__", "_")
+            )
 
-        df.columns = [modelname + "_" + stock]
+            df.columns = [modelname + "_" + stock]
 
-        residual_df = pd.merge(
-            residual_df, df, left_index=True, right_index=True, how="outer"
-        )
+            created_df = pd.merge(
+                created_df, df, left_index=True, right_index=True, how="outer"
+            )
 
-residual_df.index = pd.to_datetime(residual_df.index)
-residual_df = residual_df[residual_df.index > start_test]
-
-
-# In[32]:
-
-
-def subset_of_columns(df: pd.DataFrame, substring: str):
-    filtered_columns = [col for col in df.columns if substring in col]
-    return df[filtered_columns]
+    created_df.index = pd.to_datetime(created_df.index)
+    created_df = created_df[created_df.index > start_test]
+    return created_df
 
 
-# In[58]:
+# In[12]:
 
 
-aic_residuals = subset_of_columns(residual_df, "aic")
-bic_residuals = subset_of_columns(residual_df, "bic")
+forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
+forecasts_df.head(2)
 
 
-# In[52]:
+# In[13]:
 
 
-# estadisticos de nans
-(residual_df.isna().sum() / len(residual_df.index) * 100).describe()
+residual_df = create_df_from_results_dict(all_residuals, "residuals")
+residual_df.head(2)
 
 
-# In[53]:
+# In[14]:
 
 
 # estadisticos de nans
 ((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
-# VAR tiene problemas con NANs
+# HMM tiene problemas con NANs
 
 
-# In[59]:
+# ## Separating in different stocks
+
+# In[15]:
 
 
-model_list = ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]
+def subset_of_columns(df: pd.DataFrame, substring: str, exclude:str=None):
+    filtered_columns = [col for col in df.columns if substring in col] 
+    
+    if exclude is not None:
+        filtered_columns = [col for col in filtered_columns.copy() if exclude not in col] 
 
-aggregating_dict = {"aic": {}, "bic": {}}
-
-for criteria, dataframe in zip(("aic", "bic"), (aic_residuals, bic_residuals)):
-    for model in model_list:
-        aggregating_dict[criteria][model] = subset_of_columns(dataframe, model)
-
-aggregating_dict["bic"]["GARCH"].head()
+    return df[filtered_columns]
 
 
-# In[63]:
+# In[16]:
 
 
-metrics_df = pd.DataFrame(index=["mse", "meanabs", "medianabs"])
+def separate_by_stock(df:pd.DataFrame):
+     stock_dict={}
 
-for criteria, dictionary in aggregating_dict.items():
-    for model, dataframe in dictionary.items():
-        metrics_df.loc["mse", f"{criteria}_{model}"] = (
-            (dataframe**2).mean().mean()
+     for stock in params["tickerlist"]:
+          if params["local_suffix"] in stock:
+               stock_dict[stock]= subset_of_columns(residual_df, stock)
+          else:
+               stock_dict[stock]= subset_of_columns(residual_df, stock, params["local_suffix"])    
+     
+     return stock_dict      
+
+
+# In[17]:
+
+
+forecasts_by_stock=separate_by_stock(forecasts_df)
+residuals_by_stock=separate_by_stock(residual_df)
+
+
+# In[18]:
+
+
+def delete_in_column_names(df:pd.DataFrame, string:str):
+    new_cols=[]
+    for col in df.columns:
+        col=col.replace(string, "")
+        new_cols.append(col)
+    df=df.set_axis(labels=new_cols, axis=1)
+    return df
+
+
+# In[19]:
+
+
+dmroute=os.path.join(graphsroute, "DM")
+gwroute=os.path.join(graphsroute, "GW")
+
+for stock in forecasts_by_stock.keys():
+    print(stock)
+    real_values=subset_of_columns(df_test, f"{stock}_log_rets")
+    forecasts=delete_in_column_names(forecasts_by_stock[stock].fillna(0), f"__{stock}")   
+
+    plot_multivariate_DM_test(real_price=real_values, 
+                            forecasts=forecasts.fillna(0), 
+                            title=f"DM test {stock}",
+                            savefig=True,
+                            path=dmroute)
+
+
+# In[21]:
+
+
+residuals_by_stock
+
+
+# In[25]:
+
+
+dataframe
+
+
+# In[54]:
+
+
+best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
+
+for stock, dataframe in residuals_by_stock.items():
+    dataframe = delete_in_column_names(dataframe, f"__{stock}")
+    metrics_df = pd.DataFrame(index=["mse", "meanabs", "medianabs"])
+
+    for column in dataframe.columns:
+        single_model=pd.DataFrame(dataframe[column])
+        
+        metrics_df.loc["mse", column] = (
+            (single_model**2).mean().mean()
         )
-        metrics_df.loc["meanabs", f"{criteria}_{model}"] = (
-            dataframe.abs().mean().mean()
+        metrics_df.loc["meanabs", column] = (
+            single_model.abs().mean().mean()
         )
-        metrics_df.loc["medianabs", f"{criteria}_{model}"] = (
-            (dataframe.abs()).median().median()
+        metrics_df.loc["medianabs", column] = (
+            (single_model.abs()).median().median()
         )
+    metrics_df = metrics_df * 100
+        
+    best_dict={}
+    for criterion in metrics_df.index:
+        best_dict[criterion] = metrics_df.iloc[metrics_df.index==criterion].idxmin(axis="columns").values[0]
+        
+    best_models_by_stock[stock]= (metrics_df, best_dict)
 
-metrics_df = metrics_df * 100
-metrics_df
+
+# In[55]:
 
 
-# In[64]:
+best_models_by_stock["YPFD.BA"][1]
 
 
-for criteria in ["aic", "bic"]:
-    print(criteria)
-    filtered_columns = [col for col in metrics_df.columns if criteria in col]
-    for metric in metrics_df.index:
-        print(metric)
-        print(metrics_df[filtered_columns].loc[metric].idxmin())
-        print(np.round(metrics_df[filtered_columns].loc[metric].min(), 5))
-        print()
-    print()
+# In[56]:
+
+
+best_models_by_stock["YPFD.BA"][0]
 

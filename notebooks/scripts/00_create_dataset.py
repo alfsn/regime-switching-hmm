@@ -71,12 +71,6 @@ for item in tickerlist:
 # In[8]:
 
 
-params["tablename"]
-
-
-# In[9]:
-
-
 def download_data(start, end, tablename, datatype, dataroute):
     name=f'dataset_{datatype}_{tablename}.pickle'
     filename=os.path.join(dataroute, name)
@@ -95,7 +89,7 @@ def download_data(start, end, tablename, datatype, dataroute):
     return data
 
 
-# In[10]:
+# In[9]:
 
 
 train_data=download_data(start=params["start_train"], 
@@ -113,7 +107,7 @@ test_data=download_data(start=params["start_test"],
 datasets=[train_data, test_data]
 
 
-# In[11]:
+# In[10]:
 
 
 train_data[params["index"]].head()
@@ -121,13 +115,13 @@ train_data[params["index"]].head()
 
 # ## Data quality deletion
 
-# In[12]:
+# In[11]:
 
 
 dq_index=pd.to_datetime(params["data_quality_dates"])
 
 
-# In[13]:
+# In[12]:
 
 
 for data in datasets:
@@ -138,7 +132,7 @@ for data in datasets:
 
 # ## Implicit USD calculation
 
-# In[14]:
+# In[13]:
 
 
 def _reindex_refill_dfs(df1, df2):
@@ -156,7 +150,7 @@ def _reindex_refill_dfs(df1, df2):
     return df3, df4
 
 
-# In[15]:
+# In[14]:
 
 
 def calculate_usd(usd_df, ars_df, conversion_factor):
@@ -170,13 +164,13 @@ def calculate_usd(usd_df, ars_df, conversion_factor):
     return implicit_usd
 
 
-# In[16]:
+# In[15]:
 
 
 params["stocksdict"].items()
 
 
-# In[17]:
+# In[16]:
 
 
 usd_col_set=set()
@@ -190,7 +184,7 @@ for data in datasets:
 usd_col_set
 
 
-# In[18]:
+# In[17]:
 
 
 for data in datasets:
@@ -203,7 +197,7 @@ for data in datasets:
     data["USD"]["Average"]=data["USD"].mean(axis=1)
 
 
-# In[19]:
+# In[18]:
 
 
 for data in datasets:
@@ -212,7 +206,7 @@ for data in datasets:
         # revisar esto
 
 
-# In[20]:
+# In[19]:
 
 
 for data in datasets:
@@ -221,16 +215,16 @@ for data in datasets:
 
 # ## USD Denominated Index
 
-# In[21]:
+# In[20]:
 
 
 for data in datasets:
-    data["USD_^MERV"]=pd.DataFrame(columns=ohlclist)
+    data[f"""{params["index"]}_USD"""]=pd.DataFrame(columns=ohlclist)
 
     for col in ohlclist:
-        data["USD_^MERV"][col] = data["^MERV"][col]/data["USD"]["Average"]
+        data[f"""{params["index"]}_USD"""][col] = data[params["index"]][col]/data["USD"]["Average"]
         
-    data["USD_^MERV"].ffill(inplace=True)
+    data[f"""{params["index"]}_USD"""].ffill(inplace=True)
 
 
 # ## Intraday Volatility
@@ -242,7 +236,7 @@ for data in datasets:
 # 
 # Garman, M. B. and M. J. Klass (1980). On the estimation of security price volatilities from historical data. Journal of Business 53, 67–78.
 
-# In[22]:
+# In[21]:
 
 
 def gk_vol(o, h, l, c):
@@ -252,7 +246,7 @@ def gk_vol(o, h, l, c):
 
 # ## Returns Calculation
 
-# In[23]:
+# In[22]:
 
 
 for data in datasets:
@@ -271,7 +265,7 @@ for data in datasets:
 # ## Process into single dataframe, matching dates and forward filling
 # Véase https://github.com/alfsn/regime-switching-hmm/issues/9
 
-# In[24]:
+# In[23]:
 
 
 df_train = pd.DataFrame()
@@ -285,7 +279,7 @@ for df, data in zip(df_datasets, datasets):
             df[key+"_"+column]=value[column]
 
 
-# In[25]:
+# In[24]:
 
 
 for df in df_datasets:
@@ -295,16 +289,22 @@ for df in df_datasets:
 
 # ## Excluimos los dólares implícitos
 
-# In[26]:
+# In[28]:
+
+
+datasets[0].keys()
+
+
+# In[31]:
 
 
 for data in datasets:
     usdlist=[]
     for key in data.keys():
-        if key.startswith("USD"):
+        if "USD" in key:
             usdlist.append(key)
     usdlist.remove("USD")
-    usdlist.remove("USD_^MERV")        
+    usdlist.remove(f"""{params["index"]}_USD""")        
 
     print(usdlist)
 
@@ -314,7 +314,7 @@ for data in datasets:
 
 # ## Save dataset
 
-# In[27]:
+# In[32]:
 
 
 for data, name in zip(datasets, ["train", "test"]):
@@ -323,17 +323,17 @@ for data, name in zip(datasets, ["train", "test"]):
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[28]:
+# In[33]:
 
 
-particular_USDs=[column for column in df.columns if ((column.startswith("USD")) and ("^MERV" not in column))]
+particular_USDs=[column for column in df.columns if ((column.startswith("USD")) and (params["index"] not in column))]
 particular_USDs.remove("USD_rets") 
 particular_USDs.remove("USD_log_rets")
 particular_USDs.remove("USD_gk_vol")
 particular_USDs
 
 
-# In[29]:
+# In[34]:
 
 
 df_clean_datasets=[]
@@ -343,7 +343,7 @@ for df in df_datasets:
     df_clean_datasets.append(df_clean)
 
 
-# In[30]:
+# In[35]:
 
 
 for df_clean, name in zip(df_clean_datasets, ["train", "test"]):

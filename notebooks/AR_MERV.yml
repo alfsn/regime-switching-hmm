@@ -4,8 +4,11 @@ tablename_prefix: "AR"
 # dates
 start_train: '2013-01-01'
 end_train: "2023-06-01"
-start_test: '2023-06-01'
+
+start_test: '2023-05-31' 
 end_test: "2023-12-01"
+# start test requiere solapamiento de un día con end_train
+# ya que, al enfocarse en log-returns, precisa de dos días para cada dato
 
 data_quality_dates: ["2022-07-14", "2023-11-20"]
 
@@ -34,3 +37,7 @@ stocksdict:
  - "BBAR"
  - "BBAR.BA"
  - 3
+
+local_suffix: ".BA"
+
+model_list: ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]
