@@ -281,7 +281,7 @@ def GW(p_real, p_pred_1, p_pred_2, norm=1, version='univariate'):
     GWstat *= np.sign(np.mean(d, axis=0))
     
     q = reg.shape[0]
-    pval = 1 - scipy.stats.chi2.cdf(GWstat, q)
+    pval = 1 - stats.chi2.cdf(GWstat, q)
     return pval
 
 def plot_multivariate_GW_test(real_price, forecasts, norm=1, title='GW test', savefig=False, saveps=False, path=''):
