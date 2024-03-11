@@ -38,4 +38,4 @@ stocksdict:
  - "BBAR.BA"
  - 3
 
- local_suffix: ".BA"
+local_suffix: ".BA"
