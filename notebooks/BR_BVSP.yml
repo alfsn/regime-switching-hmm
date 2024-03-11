@@ -1,0 +1,40 @@
+---
+tablename_prefix: "BR"
+
+# dates
+start_train: '2013-01-01'
+end_train: "2023-06-01"
+
+start_test: '2023-05-31' 
+end_test: "2023-12-01"
+# start_test requieres one day of overlap with end_train
+# this is since, by focusing on log-returns, it requires two days for each datum
+
+data_quality_dates: []
+
+# downloading data
+index: "^BVSP"
+# this dictionary's format is
+  # US_name: [US_name, local_name, conversion_factor]
+  # these data are generally sourced from adr.com
+stocksdict: 
+ VALE: 
+ - "VALE"
+ - "VALE3.BA" 
+ - 10 
+ PBR: 
+ - "PBR"
+ - "PETR3.SA"
+ - 2
+ BBD: 
+ - "BBD"
+ - "BBDC4.SA"
+ - 1
+ ABEV: 
+ - "ABEV"
+ - "ABEV3.SA"
+ - 1
+
+local_suffix: ".SA"
+
+model_list: ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]
