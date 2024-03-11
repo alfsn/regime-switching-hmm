@@ -111,7 +111,7 @@ def DM(p_real, p_pred_1, p_pred_2, norm=1, version='univariate'):
 
     return p_value
 
-def plot_multivariate_DM_test(real_price, forecasts, norm=1, title='DM test', savefig=False, path=''):
+def plot_multivariate_DM_test(real_price, forecasts, norm=1, title='DM test', savefig=False, saveps=False, path=''):
     """Plotting the results of comparing forecasts using the multivariate DM test. 
     
     The resulting plot is a heat map in a chessboard shape. It represents the p-value
@@ -172,9 +172,12 @@ def plot_multivariate_DM_test(real_price, forecasts, norm=1, title='DM test', sa
     plt.title(title)
     plt.tight_layout()
 
+    
+    title_save=title.replace(" ", "_")
+
     if savefig:
-        title_save=title.replace(" ", "_")
         plt.savefig(os.path.join(path, title_save + '.png'), dpi=300)
+    if saveps:
         plt.savefig(os.path.join(path, title_save + '.eps'))
 
     plt.show()
@@ -281,7 +284,7 @@ def GW(p_real, p_pred_1, p_pred_2, norm=1, version='univariate'):
     pval = 1 - scipy.stats.chi2.cdf(GWstat, q)
     return pval
 
-def plot_multivariate_GW_test(real_price, forecasts, norm=1, title='GW test', savefig=False, path=''):
+def plot_multivariate_GW_test(real_price, forecasts, norm=1, title='GW test', savefig=False, saveps=False, path=''):
     """Plotting the results of comparing forecasts using the multivariate GW test. 
     
     The resulting plot is a heat map in a chessboard shape. It represents the p-value
@@ -342,9 +345,11 @@ def plot_multivariate_GW_test(real_price, forecasts, norm=1, title='GW test', sa
     plt.title(title)
     plt.tight_layout()
 
+    title_save=title.replace(" ", "_")
+
     if savefig:
-        title_save=title.replace(" ", "_")
         plt.savefig(os.path.join(path, title_save + '.png'), dpi=300)
+    if saveps:
         plt.savefig(os.path.join(path, title_save + '.eps'))
 
     plt.show()
