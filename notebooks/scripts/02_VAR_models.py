@@ -121,7 +121,7 @@ df.tail()
 df_test.head()
 
 
-# In[14]:
+# In[58]:
 
 
 def generate_VAR_samples_residuals(
@@ -141,10 +141,10 @@ def generate_VAR_samples_residuals(
     split_date = oos_data.index[0]
     dates_to_forecast = len(oos_data)
 
-    forecasts = pd.DataFrame()
-    residuals = pd.DataFrame()
+    fcast_holder = []
+    resid_holder = []
 
-    for i in range(1, dates_to_forecast):
+    for i in range(0, dates_to_forecast):
         end_loc = combined_data.index.get_loc(split_date) + i
         fitstart = end_loc - 252
         fitend = end_loc
@@ -155,17 +155,24 @@ def generate_VAR_samples_residuals(
         results = model.fit(lags)
 
         fcast = results.forecast(y=stock_data.values, steps=1)
-        fcast_df = pd.DataFrame(fcast, columns=columns)
+        resid = results.resid.iloc[-1:]
+        
+        fcast_holder.append(fcast)
+        resid_holder.append(resid)
 
-        resid = results.resid.iloc[-1:].rename({0: 'residual'}, axis=1)
-
-        forecasts = pd.concat([forecasts, fcast_df], ignore_index=True)
-        residuals = pd.concat([residuals, resid], ignore_index=True)
+    forecasts = pd.DataFrame(np.concatenate(fcast_holder), columns=columns, index=oos_data.index)
+    residuals = pd.DataFrame(np.concatenate(resid_holder), columns=columns, index=oos_data.index)
 
     return forecasts, residuals
 
 
-# In[15]:
+# In[59]:
+
+
+np.empty((0,2))
+
+
+# In[60]:
 
 
 def estimate_best_residuals(
@@ -197,7 +204,7 @@ def estimate_best_residuals(
     return best_lag, forecasts, residuals
 
 
-# In[16]:
+# In[61]:
 
 
 def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
@@ -216,7 +223,7 @@ def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
         pickle.dump(data, output_file)
 
 
-# In[17]:
+# In[62]:
 
 
 best_lags = {
@@ -270,4 +277,15 @@ for criterion in ["aic", "bic"]:
             criterion=criterion,
             type_save="residuals",
         )
+
+
+# In[64]:
+
+
+for crit, d in best_residuals.items():
+    for cols, values in d.items():
+        for stock, dataframe in values.items():
+            isna= dataframe.iloc[:,0].isna().sum()/len(dataframe.index)
+            if isna>0:
+                print(crit, stock, cols, isna)
 
