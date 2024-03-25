@@ -121,7 +121,7 @@ df.tail()
 df_test.head()
 
 
-# In[58]:
+# In[14]:
 
 
 def generate_VAR_samples_residuals(
@@ -166,13 +166,13 @@ def generate_VAR_samples_residuals(
     return forecasts, residuals
 
 
-# In[59]:
+# In[15]:
 
 
 np.empty((0,2))
 
 
-# In[60]:
+# In[16]:
 
 
 def estimate_best_residuals(
@@ -204,7 +204,7 @@ def estimate_best_residuals(
     return best_lag, forecasts, residuals
 
 
-# In[61]:
+# In[17]:
 
 
 def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
@@ -223,7 +223,7 @@ def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
         pickle.dump(data, output_file)
 
 
-# In[62]:
+# In[18]:
 
 
 best_lags = {
@@ -279,7 +279,7 @@ for criterion in ["aic", "bic"]:
         )
 
 
-# In[64]:
+# In[19]:
 
 
 for crit, d in best_residuals.items():
