@@ -4,7 +4,7 @@
 # # Comparison
 # 
 
-# In[2]:
+# In[24]:
 
 
 import pandas as pd
@@ -15,7 +15,7 @@ import pickle
 pd.set_option("display.max_columns", None)
 
 
-# In[3]:
+# In[25]:
 
 
 from scripts.params import get_params
@@ -23,13 +23,13 @@ from scripts.params import get_params
 params = get_params()
 
 
-# In[4]:
+# In[26]:
 
 
 from scripts.epftoolbox_dm_gw import DM, plot_multivariate_DM_test, GW, plot_multivariate_GW_test
 
 
-# In[5]:
+# In[27]:
 
 
 dataroute = os.path.join("..", "data")
@@ -38,14 +38,14 @@ resultsroute = os.path.join("..", "results")
 graphsroute = os.path.join(resultsroute, "graphs")
 
 
-# In[6]:
+# In[28]:
 
 
 start_test = params["start_test"]
 local_suffix = params["local_suffix"]
 
 
-# In[7]:
+# In[29]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -54,7 +54,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[8]:
+# In[30]:
 
 
 def get_all_results_matching(substring:str):
@@ -69,14 +69,14 @@ def get_all_results_matching(substring:str):
     return all_results
 
 
-# In[9]:
+# In[31]:
 
 
 all_forecasts = get_all_results_matching("forecast")
 all_residuals = get_all_results_matching("residual")
 
 
-# In[10]:
+# In[32]:
 
 
 def get_only_log_rets(dict_with_dfs: dict, stock: str):
@@ -93,7 +93,7 @@ def get_only_log_rets(dict_with_dfs: dict, stock: str):
     return df
 
 
-# In[11]:
+# In[33]:
 
 
 def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
@@ -125,21 +125,29 @@ def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
     return created_df
 
 
-# In[12]:
+# In[34]:
 
 
 forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
-forecasts_df.head(2)
+forecasts_df.tail(2)
 
 
-# In[13]:
+# In[35]:
 
 
 residual_df = create_df_from_results_dict(all_residuals, "residuals")
 residual_df.head(2)
 
 
-# In[14]:
+# In[36]:
+
+
+lower_date=pd.to_datetime(params["start_test"])+pd.Timedelta(days=1)
+higher_date=pd.to_datetime(params["end_test"])-pd.Timedelta(days=1)
+residual_df[lower_date:higher_date]
+
+
+# In[37]:
 
 
 # estadisticos de nans
@@ -147,9 +155,17 @@ residual_df.head(2)
 # HMM tiene problemas con NANs
 
 
+# In[38]:
+
+
+# estadisticos de nans
+((forecasts_df.isna().sum(axis=0) / len(forecasts_df.index)) * 100).nlargest(10)
+# HMM tiene problemas con NANs
+
+
 # ## Separating in different stocks
 
-# In[15]:
+# In[39]:
 
 
 def subset_of_columns(df: pd.DataFrame, substring: str, exclude:str=None):
@@ -161,7 +177,7 @@ def subset_of_columns(df: pd.DataFrame, substring: str, exclude:str=None):
     return df[filtered_columns]
 
 
-# In[16]:
+# In[40]:
 
 
 def separate_by_stock(df:pd.DataFrame):
@@ -176,14 +192,14 @@ def separate_by_stock(df:pd.DataFrame):
      return stock_dict      
 
 
-# In[17]:
+# In[41]:
 
 
 forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
-# In[18]:
+# In[42]:
 
 
 def delete_in_column_names(df:pd.DataFrame, string:str):
@@ -195,7 +211,7 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[19]:
+# In[43]:
 
 
 dmroute=os.path.join(graphsroute, "DM")
@@ -213,19 +229,13 @@ for stock in forecasts_by_stock.keys():
                             path=dmroute)
 
 
-# In[21]:
+# In[44]:
 
 
 residuals_by_stock
 
 
-# In[25]:
-
-
-dataframe
-
-
-# In[54]:
+# In[46]:
 
 
 best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
@@ -255,13 +265,13 @@ for stock, dataframe in residuals_by_stock.items():
     best_models_by_stock[stock]= (metrics_df, best_dict)
 
 
-# In[55]:
+# In[47]:
 
 
 best_models_by_stock["YPFD.BA"][1]
 
 
-# In[56]:
+# In[48]:
 
 
 best_models_by_stock["YPFD.BA"][0]

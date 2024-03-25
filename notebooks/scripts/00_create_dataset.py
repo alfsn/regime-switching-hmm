@@ -71,7 +71,7 @@ for item in tickerlist:
 # In[8]:
 
 
-def download_data(start, end, tablename, datatype, dataroute):
+def download_or_load_data(start, end, tablename, datatype, dataroute):
     name=f'dataset_{datatype}_{tablename}.pickle'
     filename=os.path.join(dataroute, name)
     if not os.path.exists(filename):
@@ -89,39 +89,39 @@ def download_data(start, end, tablename, datatype, dataroute):
     return data
 
 
-# In[9]:
+# In[35]:
 
 
-train_data=download_data(start=params["start_train"], 
-                         end=params["end_train"],
-                         tablename=params["tablename"],
-                         datatype="train", 
-                         dataroute=dataroute)
+train_data = download_or_load_data(
+    start=params["start_train"],
+    end=params["end_train"],
+    tablename=params["tablename"],
+    datatype="train",
+    dataroute=dataroute,
+)
 
-test_data=download_data(start=params["start_test"], 
-                         end=params["end_test"],
-                         tablename=params["tablename"],
-                         datatype="test",
-                         dataroute=dataroute)
+test_data = download_or_load_data(
+    start=params["start_test"],
+    end=(pd.to_datetime(params["end_test"]) + pd.Timedelta(days=7)).strftime(
+        "%Y-%m-%d"
+    ),
+    tablename=params["tablename"],
+    datatype="test",
+    dataroute=dataroute,
+)
 
-datasets=[train_data, test_data]
-
-
-# In[10]:
-
-
-train_data[params["index"]].head()
+datasets = [train_data, test_data]
 
 
 # ## Data quality deletion
 
-# In[11]:
+# In[37]:
 
 
 dq_index=pd.to_datetime(params["data_quality_dates"])
 
 
-# In[12]:
+# In[38]:
 
 
 for data in datasets:
@@ -132,7 +132,7 @@ for data in datasets:
 
 # ## Implicit USD calculation
 
-# In[13]:
+# In[39]:
 
 
 def _reindex_refill_dfs(df1, df2):
@@ -150,7 +150,7 @@ def _reindex_refill_dfs(df1, df2):
     return df3, df4
 
 
-# In[14]:
+# In[40]:
 
 
 def calculate_usd(usd_df, ars_df, conversion_factor):
@@ -164,13 +164,13 @@ def calculate_usd(usd_df, ars_df, conversion_factor):
     return implicit_usd
 
 
-# In[15]:
+# In[41]:
 
 
 params["stocksdict"].items()
 
 
-# In[16]:
+# In[42]:
 
 
 usd_col_set=set()
@@ -184,7 +184,7 @@ for data in datasets:
 usd_col_set
 
 
-# In[17]:
+# In[43]:
 
 
 for data in datasets:
@@ -197,7 +197,7 @@ for data in datasets:
     data["USD"]["Average"]=data["USD"].mean(axis=1)
 
 
-# In[18]:
+# In[44]:
 
 
 for data in datasets:
@@ -206,7 +206,7 @@ for data in datasets:
         # revisar esto
 
 
-# In[19]:
+# In[45]:
 
 
 for data in datasets:
@@ -215,7 +215,7 @@ for data in datasets:
 
 # ## USD Denominated Index
 
-# In[20]:
+# In[46]:
 
 
 for data in datasets:
@@ -236,7 +236,7 @@ for data in datasets:
 # 
 # Garman, M. B. and M. J. Klass (1980). On the estimation of security price volatilities from historical data. Journal of Business 53, 67–78.
 
-# In[21]:
+# In[47]:
 
 
 def gk_vol(o, h, l, c):
@@ -246,7 +246,7 @@ def gk_vol(o, h, l, c):
 
 # ## Returns Calculation
 
-# In[22]:
+# In[48]:
 
 
 for data in datasets:
@@ -265,7 +265,7 @@ for data in datasets:
 # ## Process into single dataframe, matching dates and forward filling
 # Véase https://github.com/alfsn/regime-switching-hmm/issues/9
 
-# In[23]:
+# In[49]:
 
 
 df_train = pd.DataFrame()
@@ -279,7 +279,7 @@ for df, data in zip(df_datasets, datasets):
             df[key+"_"+column]=value[column]
 
 
-# In[24]:
+# In[50]:
 
 
 for df in df_datasets:
@@ -289,13 +289,13 @@ for df in df_datasets:
 
 # ## Excluimos los dólares implícitos
 
-# In[28]:
+# In[51]:
 
 
 datasets[0].keys()
 
 
-# In[31]:
+# In[52]:
 
 
 for data in datasets:
@@ -314,7 +314,7 @@ for data in datasets:
 
 # ## Save dataset
 
-# In[32]:
+# In[53]:
 
 
 for data, name in zip(datasets, ["train", "test"]):
@@ -323,7 +323,7 @@ for data, name in zip(datasets, ["train", "test"]):
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[33]:
+# In[54]:
 
 
 particular_USDs=[column for column in df.columns if ((column.startswith("USD")) and (params["index"] not in column))]
@@ -333,7 +333,7 @@ particular_USDs.remove("USD_gk_vol")
 particular_USDs
 
 
-# In[34]:
+# In[55]:
 
 
 df_clean_datasets=[]
@@ -343,7 +343,7 @@ for df in df_datasets:
     df_clean_datasets.append(df_clean)
 
 
-# In[35]:
+# In[56]:
 
 
 for df_clean, name in zip(df_clean_datasets, ["train", "test"]):

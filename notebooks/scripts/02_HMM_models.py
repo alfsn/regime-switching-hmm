@@ -271,7 +271,7 @@ with open(filename, "rb") as handle:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
-    residuals = (actual - forecasts).dropna()
+    residuals = (actual - forecasts)
     return residuals
 
 
@@ -472,9 +472,23 @@ for criterion, type_dict in models_dict.items():
             print(f"MODEL FALILURE: {criterion}, {modeltype}")
 
 
+# In[27]:
+
+
+file="HMM_multiv_AR_^MERV_aic_best_residuals.pickle"
+with open(os.path.join(resultsroute, file), "rb") as f:
+    opened_pickle=pickle.load(f)
+
+
+# In[28]:
+
+
+opened_pickle["BBAR"]
+
+
 # # Graficando
 
-# In[27]:
+# In[29]:
 
 
 def plot_close_rets_vol(model, data, key, IC):
@@ -503,7 +517,7 @@ def plot_close_rets_vol(model, data, key, IC):
     plt.savefig(os.path.join(resultsroute, "graphs", f"HMM", f"{key}_model_{IC}.png"))
 
 
-# In[28]:
+# In[30]:
 
 
 # for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):

@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[21]:
 
 
 import numpy as np
@@ -17,13 +17,13 @@ import pickle
 import warnings
 
 
-# In[2]:
+# In[22]:
 
 
 np.random.seed(42)
 
 
-# In[3]:
+# In[23]:
 
 
 from scripts.params import get_params
@@ -31,7 +31,7 @@ from scripts.params import get_params
 params = get_params()
 
 
-# In[4]:
+# In[24]:
 
 
 dataroute = os.path.join("..", "data")
@@ -41,7 +41,7 @@ resultsroute = os.path.join("..", "results")
 
 # ## Data Retrieval
 
-# In[5]:
+# In[25]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -50,7 +50,7 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[6]:
+# In[26]:
 
 
 df.head()
@@ -60,7 +60,7 @@ df.head()
 # Warning: this section only uses log_rets as y variables. See:
 # https://github.com/alfsn/regime-switching-hmm/issues/35
 
-# In[7]:
+# In[27]:
 
 
 # Define the range of p and q values
@@ -70,21 +70,21 @@ q_values = [0, 1, 2, 3]  # Example: q values
 # all models with q=0 are exclusively ARCH (non-GARCH)
 
 
-# In[8]:
+# In[28]:
 
 
 models = {}
 predict = {}
 
 
-# In[9]:
+# In[29]:
 
 
 best_aic = {}
 best_bic = {}
 
 
-# In[10]:
+# In[30]:
 
 
 def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -104,7 +104,7 @@ def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[11]:
+# In[31]:
 
 
 def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -124,7 +124,7 @@ def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[12]:
+# In[32]:
 
 
 # Estimate ARMA-ARCH and ARMA-GARCH models for different p and q values
@@ -191,7 +191,7 @@ print(f"nonconverged: {nonconverged_models}")
 
 # # Residuals
 
-# In[13]:
+# In[33]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -200,7 +200,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[14]:
+# In[34]:
 
 
 def generate_GARCH_samples_residuals(
@@ -219,17 +219,17 @@ def generate_GARCH_samples_residuals(
     Returns:
         _type_: _description_
     """
-    split_date = oos_data.index[0]
+    split_date = insample_data.index[-1]
     dates_to_forecast = len(oos_data.index)
 
-    oos_data = pd.concat([insample_data, oos_data])
+    full_data = pd.concat([insample_data, oos_data])
     del insample_data
 
     # vamos a implementar recursive window forecasting
     # https://arch.readthedocs.io/en/latest/univariate/forecasting.html
     # https://arch.readthedocs.io/en/latest/univariate/univariate_volatility_forecasting.html#Recursive-Forecast-Generation
 
-    index = oos_data.index
+    index = full_data.index
     end_loc = np.where(index >= split_date)[0].min()
     # esto es un int del iloc
     # preciso usar ints de iloc porque el timedelta se me va a romper con el fin de semana
@@ -238,7 +238,7 @@ def generate_GARCH_samples_residuals(
     forecasts = {}
 
     model = arch.arch_model(
-        y=oos_data,
+        y=full_data,
         mean="AR",
         lags=1,
         vol="Garch",
@@ -248,8 +248,8 @@ def generate_GARCH_samples_residuals(
         rescale=False,
     )
 
-    for i in range(1, dates_to_forecast):
-        date_of_first_forecast = oos_data.index[end_loc + i]
+    for i in range(0, dates_to_forecast):
+        date_of_first_forecast = full_data.index[end_loc + i]
 
         res = model.fit(
             first_obs=end_loc - rolling_window + i, last_obs=end_loc + i, disp="off"
@@ -262,12 +262,12 @@ def generate_GARCH_samples_residuals(
         forecasts[forecast.name] = forecast
 
     forecasts = pd.DataFrame(forecasts).T
-    forecasts.columns = oos_data.columns
+    forecasts.columns = full_data.columns
 
     pct_nan = forecasts.iloc[:, 0].isna().sum() / len(forecasts.index) * 100
 
     if pct_nan > 5:
-        warnings.warn(f"{oos_data.columns[0]} % na: {pct_nan}")
+        warnings.warn(f"{full_data.columns[0]} % na: {pct_nan}")
 
     forecasts.fillna(method="ffill", inplace=True)
 
@@ -276,7 +276,7 @@ def generate_GARCH_samples_residuals(
     return forecasts, residuals
 
 
-# In[15]:
+# In[35]:
 
 
 def save_as_pickle(data, criterion: str, type_save: str):    
@@ -290,7 +290,7 @@ def save_as_pickle(data, criterion: str, type_save: str):
         pickle.dump(data, output_file)
 
 
-# In[16]:
+# In[36]:
 
 
 forecasts_dict={"aic":{}, "bic":{}}
@@ -308,7 +308,7 @@ for criterion, dictionary in zip(["aic", "bic"], [best_aic, best_bic]):
         residuals_dict[criterion][stock]=residuals     
 
 
-# In[17]:
+# In[37]:
 
 
 for criterion, bestmodels in zip(["aic", "bic"],[best_aic, best_bic]):
@@ -320,7 +320,7 @@ for criterion, bestmodels in zip(["aic", "bic"],[best_aic, best_bic]):
 # # Plotting
 # ## TODO: Esto aun está feo: tengo que armar que esto devuelva el plotteo de returns y los predicts uno encima del otro
 
-# In[18]:
+# In[38]:
 
 
 def plot_close_rets(data, model, key, name):
@@ -345,7 +345,7 @@ def plot_close_rets(data, model, key, name):
     )
 
 
-# In[20]:
+# In[39]:
 
 
 # for key in data.keys():
