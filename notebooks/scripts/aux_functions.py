@@ -88,10 +88,11 @@ def subset_of_columns(df: pd.DataFrame, substring: str, exclude: str = None):
 
 
 def clean_modelname(name: str, substring_to_replace: str, tablename: str):
-    name.replace(f"{substring_to_replace}", ""
+    clean = name.replace(f"{substring_to_replace}", ""
                  ).replace(".pickle", ""
                            ).replace("best", ""
                                      ).replace(tablename, ""
                                                ).replace("__", "_"
                                                          ).replace("__", "_")
-    return name
+    clean = clean[:-1] if clean.endswith("_") else clean # avoids ending in "_"
+    return clean
