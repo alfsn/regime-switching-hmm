@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[21]:
+# In[1]:
 
 
 import numpy as np
@@ -17,31 +17,32 @@ import pickle
 import warnings
 
 
-# In[22]:
+# In[2]:
 
 
 np.random.seed(42)
 
 
-# In[23]:
+# In[3]:
 
 
 from scripts.params import get_params
+from scripts.aux_functions import save_as_pickle
 
 params = get_params()
 
 
-# In[24]:
+# In[4]:
 
 
-dataroute = os.path.join("..", "data")
-processedroute = os.path.join("...", "processed")
-resultsroute = os.path.join("..", "results")
+dataroute = params["dataroute"]
+resultsroute = params["resultsroute"]
+dumproute = params["dumproute"]
 
 
 # ## Data Retrieval
 
-# In[25]:
+# In[5]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -50,7 +51,7 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[26]:
+# In[6]:
 
 
 df.head()
@@ -60,7 +61,7 @@ df.head()
 # Warning: this section only uses log_rets as y variables. See:
 # https://github.com/alfsn/regime-switching-hmm/issues/35
 
-# In[27]:
+# In[7]:
 
 
 # Define the range of p and q values
@@ -70,21 +71,21 @@ q_values = [0, 1, 2, 3]  # Example: q values
 # all models with q=0 are exclusively ARCH (non-GARCH)
 
 
-# In[28]:
+# In[8]:
 
 
 models = {}
 predict = {}
 
 
-# In[29]:
+# In[9]:
 
 
 best_aic = {}
 best_bic = {}
 
 
-# In[30]:
+# In[10]:
 
 
 def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -104,7 +105,7 @@ def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[31]:
+# In[11]:
 
 
 def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -124,7 +125,7 @@ def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[32]:
+# In[12]:
 
 
 # Estimate ARMA-ARCH and ARMA-GARCH models for different p and q values
@@ -191,7 +192,7 @@ print(f"nonconverged: {nonconverged_models}")
 
 # # Residuals
 
-# In[33]:
+# In[13]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -200,7 +201,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[34]:
+# In[14]:
 
 
 def generate_GARCH_samples_residuals(
@@ -276,21 +277,7 @@ def generate_GARCH_samples_residuals(
     return forecasts, residuals
 
 
-# In[35]:
-
-
-def save_as_pickle(data, criterion: str, type_save: str):    
-    with open(
-        os.path.join(
-            resultsroute,
-            f"""GARCH_{params["tablename"]}_{criterion}_best_{type_save}.pickle""",
-        ),
-        "wb",
-    ) as output_file:
-        pickle.dump(data, output_file)
-
-
-# In[36]:
+# In[15]:
 
 
 forecasts_dict={"aic":{}, "bic":{}}
@@ -308,19 +295,42 @@ for criterion, dictionary in zip(["aic", "bic"], [best_aic, best_bic]):
         residuals_dict[criterion][stock]=residuals     
 
 
-# In[37]:
+# In[16]:
 
 
-for criterion, bestmodels in zip(["aic", "bic"],[best_aic, best_bic]):
-    save_as_pickle(forecasts_dict[criterion], criterion=criterion, type_save="forecasts")
-    save_as_pickle(residuals_dict[criterion], criterion=criterion, type_save="residuals")
-    save_as_pickle(bestmodels, criterion=criterion, type_save="models")
+for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
+    save_as_pickle(
+        data=forecasts_dict[criterion],
+        resultsroute=params["resultsroute"],
+        model_type="GARCH",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="forecasts",
+    )
+
+    save_as_pickle(
+        data=residuals_dict[criterion],
+        resultsroute=params["resultsroute"],
+        model_type="GARCH",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="residuals"
+    )
+
+    save_as_pickle(
+        data=bestmodels,
+        resultsroute=params["resultsroute"],
+        model_type="GARCH",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="models"
+    )
 
 
 # # Plotting
 # ## TODO: Esto aun está feo: tengo que armar que esto devuelva el plotteo de returns y los predicts uno encima del otro
 
-# In[38]:
+# In[17]:
 
 
 def plot_close_rets(data, model, key, name):
@@ -345,7 +355,7 @@ def plot_close_rets(data, model, key, name):
     )
 
 
-# In[39]:
+# In[18]:
 
 
 # for key in data.keys():

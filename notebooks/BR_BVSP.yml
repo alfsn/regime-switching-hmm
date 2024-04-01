@@ -20,16 +20,16 @@ index: "^BVSP"
 stocksdict: 
  VALE: 
  - "VALE"
- - "VALE3.BA" 
- - 10 
+ - "VALE3.SA" 
+ - 1
  PBR: 
  - "PBR"
  - "PETR3.SA"
  - 2
- BBD: 
- - "BBD"
- - "BBDC4.SA"
- - 1
+ ERJ: 
+ - "ERJ"
+ - "EMBR3.SA"
+ - 4
  ABEV: 
  - "ABEV"
  - "ABEV3.SA"

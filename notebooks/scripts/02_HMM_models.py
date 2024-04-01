@@ -35,6 +35,7 @@ np.random.seed(random_state)
 
 
 from scripts.params import get_params
+from scripts.aux_functions import generate_columns, save_as_pickle, get_all_results_matching, clean_modelname
 
 params = get_params()
 
@@ -44,9 +45,9 @@ params = get_params()
 # In[5]:
 
 
-dataroute = os.path.join("..", "data")
-dumproute = os.path.join("..", "dump")
-resultsroute = os.path.join("..", "results")
+dataroute = params["dataroute"]
+resultsroute = params["resultsroute"]
+dumproute = params["dumproute"]
 
 
 # In[6]:
@@ -95,24 +96,6 @@ param_dict = {
 # In[11]:
 
 
-def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
-    """Devuelve una lista con los nombres de columnas para distintas especificaciones"""
-    columns = []
-    columns.append(f"{stock}_log_rets")
-
-    if contains_vol:
-        columns.append(f"{stock}_gk_vol")
-
-    if contains_USD:
-        columns.append(f"USD_log_rets")
-        columns.append(f"USD_gk_vol")
-
-    return columns
-
-
-# In[12]:
-
-
 def fit_hmm_model(
     df: pd.DataFrame,
     tickerlist: list,
@@ -156,7 +139,7 @@ def fit_hmm_model(
     return results_dict_df
 
 
-# In[13]:
+# In[12]:
 
 
 results_dict_df_univ = fit_hmm_model(
@@ -164,7 +147,7 @@ results_dict_df_univ = fit_hmm_model(
 )
 
 
-# In[14]:
+# In[13]:
 
 
 results_dict_df_with_vol = fit_hmm_model(
@@ -172,7 +155,7 @@ results_dict_df_with_vol = fit_hmm_model(
 )
 
 
-# In[15]:
+# In[14]:
 
 
 results_dict_df_multi = fit_hmm_model(
@@ -180,7 +163,7 @@ results_dict_df_multi = fit_hmm_model(
 )
 
 
-# In[16]:
+# In[15]:
 
 
 def select_best_model(
@@ -217,7 +200,7 @@ def select_best_model(
     return aic_best_model, bic_best_model
 
 
-# In[17]:
+# In[16]:
 
 
 aic_best_model_univ, bic_best_model_univ = select_best_model(
@@ -230,7 +213,7 @@ aic_best_model_univ, bic_best_model_univ = select_best_model(
 )
 
 
-# In[18]:
+# In[17]:
 
 
 aic_best_model_with_vol, bic_best_model_with_vol = select_best_model(
@@ -243,7 +226,7 @@ aic_best_model_with_vol, bic_best_model_with_vol = select_best_model(
 )
 
 
-# In[19]:
+# In[18]:
 
 
 aic_best_model_multi, bic_best_model_multi = select_best_model(
@@ -258,7 +241,7 @@ aic_best_model_multi, bic_best_model_multi = select_best_model(
 
 # # Generating out of sample data
 
-# In[20]:
+# In[19]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -267,7 +250,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[21]:
+# In[20]:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
@@ -275,7 +258,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[22]:
+# In[21]:
 
 
 def generate_HMM_samples_residuals(model, insample_data, oos_data):
@@ -374,24 +357,10 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
     residuals = return_residuals(oos_data, forecasts)
 
     print("failed models: ", counter)
-    return probabilities, forecasts, residuals
+    return probabilities, forecasts, residuals, counter
 
 
-# In[23]:
-
-
-def save_as_pickle(data, modeltype: str, criterion: str, type_save: str):
-    with open(
-        os.path.join(
-            resultsroute,
-            f"""HMM_{modeltype}_{params["tablename"]}_{criterion}_best_{type_save}.pickle""",
-        ),
-        "wb",
-    ) as output_file:
-        pickle.dump(data, output_file)
-
-
-# In[24]:
+# In[22]:
 
 
 def generate_and_save_samples(
@@ -407,6 +376,7 @@ def generate_and_save_samples(
     probabilities = {stock: None for stock in tickerlist}
     forecasts = {stock: None for stock in tickerlist}
     residuals = {stock: None for stock in tickerlist}
+    failed = {stock: None for stock in tickerlist}
 
     print(">" * 10, modeltype, criterion)
 
@@ -416,7 +386,7 @@ def generate_and_save_samples(
             stock=stock, contains_vol=contains_vol, contains_USD=contains_USD
         )
 
-        proba, fcast, resid = generate_HMM_samples_residuals(
+        proba, fcast, resid, fails = generate_HMM_samples_residuals(
             best_model_dict[stock],
             insample_data=insample_data[columns],
             oos_data=oos_data[columns],
@@ -425,16 +395,37 @@ def generate_and_save_samples(
         probabilities[stock] = proba
         forecasts[stock] = fcast
         residuals[stock] = resid
+        failed[stock] = fails
 
     save_as_pickle(
-        data=residuals, modeltype=modeltype, criterion=criterion, type_save="residuals"
+        data=forecasts,
+        resultsroute=params["resultsroute"],
+        model_type=f"HMM_{modeltype}",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="forecasts",
     )
+
     save_as_pickle(
-        data=forecasts, modeltype=modeltype, criterion=criterion, type_save="forecasts"
+        data=residuals,
+        resultsroute=params["resultsroute"],
+        model_type=f"HMM_{modeltype}",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="residuals",
+    )
+
+    save_as_pickle(
+        data=failed,
+        resultsroute=params["resultsroute"],
+        model_type=f"HMM_{modeltype}",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="model_fails",
     )
 
 
-# In[25]:
+# In[23]:
 
 
 models_dict = {
@@ -451,7 +442,7 @@ models_dict = {
 }
 
 
-# In[26]:
+# In[24]:
 
 
 for criterion, type_dict in models_dict.items():
@@ -472,23 +463,43 @@ for criterion, type_dict in models_dict.items():
             print(f"MODEL FALILURE: {criterion}, {modeltype}")
 
 
-# In[27]:
+# In[25]:
 
 
-file="HMM_multiv_AR_^MERV_aic_best_residuals.pickle"
+file=f"""HMM_multiv_{params["tablename"]}_aic_best_residuals.pickle"""
 with open(os.path.join(resultsroute, file), "rb") as f:
     opened_pickle=pickle.load(f)
 
 
-# In[28]:
+# In[26]:
 
 
-opened_pickle["BBAR"]
+opened_pickle[params["index"]].tail()
+
+
+# In[7]:
+
+
+fails_dict=get_all_results_matching(resultsroute, ["fail"])
+
+
+# In[13]:
+
+
+fails_df=pd.DataFrame()
+for name, dir in fails_dict.items():
+    dict_with_dfs = pd.read_pickle(dir)
+    colname = clean_modelname(name, substring_to_replace="model_fails", tablename=params["tablename"])
+    fails_df[colname]=dict_with_dfs
+    os.remove(dir)
+
+fails_df=fails_df/len(df_test.index)
+fails_df.to_csv(path_or_buf=os.path.join(params["resultsroute"], f"""HMM_{params["tablename"]}_fails.csv"""))
 
 
 # # Graficando
 
-# In[29]:
+# In[27]:
 
 
 def plot_close_rets_vol(model, data, key, IC):
@@ -517,7 +528,7 @@ def plot_close_rets_vol(model, data, key, IC):
     plt.savefig(os.path.join(resultsroute, "graphs", f"HMM", f"{key}_model_{IC}.png"))
 
 
-# In[30]:
+# In[28]:
 
 
 # for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):

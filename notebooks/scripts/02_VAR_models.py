@@ -35,17 +35,18 @@ np.random.seed(42)
 # In[4]:
 
 
-dataroute = os.path.join("..", "data")
-dumproute = os.path.join("..", "dump")
-resultsroute = os.path.join("..", "results")
+from scripts.params import get_params
+from scripts.aux_functions import generate_columns, save_as_pickle
+
+params = get_params()
 
 
 # In[5]:
 
 
-from scripts.params import get_params
-
-params = get_params()
+dataroute = params["dataroute"]
+resultsroute = params["resultsroute"]
+dumproute = params["dumproute"]
 
 
 # ## Data Retrieval
@@ -71,57 +72,6 @@ tickerlist = params["tickerlist"]
 
 
 # In[8]:
-
-
-df.tail(1)
-
-
-# In[9]:
-
-
-df_test.head(1)
-
-
-# In[10]:
-
-
-def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
-    """Devuelve una lista con los nombres de columnas para distintas especificaciones"""
-    columns = []
-    columns.append(f"{stock}_log_rets")
-
-    if contains_vol:
-        columns.append(f"{stock}_gk_vol")
-
-    if contains_USD:
-        columns.append(f"USD_log_rets")
-        columns.append(f"USD_gk_vol")
-
-    return columns
-
-
-# In[11]:
-
-
-selected_orders = VAR(df[["BBAR_log_rets", "BBAR_gk_vol"]]).select_order(
-    maxlags=None, trend="c"
-)
-selected_orders.selected_orders
-
-
-# In[12]:
-
-
-df.tail()
-
-
-# In[13]:
-
-
-df_test.head()
-
-
-# In[14]:
 
 
 def generate_VAR_samples_residuals(
@@ -166,13 +116,7 @@ def generate_VAR_samples_residuals(
     return forecasts, residuals
 
 
-# In[15]:
-
-
-np.empty((0,2))
-
-
-# In[16]:
+# In[9]:
 
 
 def estimate_best_residuals(
@@ -204,26 +148,7 @@ def estimate_best_residuals(
     return best_lag, forecasts, residuals
 
 
-# In[17]:
-
-
-def save_as_pickle(data, contains_USD: bool, criterion: str, type_save: str):
-    if contains_USD:
-        string = "multiv"
-    else:
-        string = "with_vol"
-
-    with open(
-        os.path.join(
-            resultsroute,
-            f"""VAR_{string}_{params["tablename"]}_{criterion}_best_{type_save}.pickle""",
-        ),
-        "wb",
-    ) as output_file:
-        pickle.dump(data, output_file)
-
-
-# In[18]:
+# In[10]:
 
 
 best_lags = {
@@ -259,27 +184,40 @@ for criterion in ["aic", "bic"]:
             best_forecasts[criterion][usdstring][stock] = forecasts
             best_residuals[criterion][usdstring][stock] = residuals
 
+        if contains_USD:
+            string = "multiv"
+        else:
+            string = "with_vol"
+
         save_as_pickle(
             data=best_lags[criterion][usdstring],
-            contains_USD=contains_USD,
+            resultsroute=params["resultsroute"],
+            model_type=f"VAR_{string}",
+            tablename=params["tablename"],
             criterion=criterion,
             type_save="lags",
         )
+        
         save_as_pickle(
             data=best_forecasts[criterion][usdstring],
-            contains_USD=contains_USD,
+            resultsroute=params["resultsroute"],
+            model_type=f"VAR_{string}",
+            tablename=params["tablename"],
             criterion=criterion,
             type_save="forecasts",
         )
+
         save_as_pickle(
             data=best_residuals[criterion][usdstring],
-            contains_USD=contains_USD,
+            resultsroute=params["resultsroute"],
+            model_type=f"VAR_{string}",
+            tablename=params["tablename"],
             criterion=criterion,
             type_save="residuals",
         )
 
 
-# In[19]:
+# In[11]:
 
 
 for crit, d in best_residuals.items():
