@@ -19,6 +19,7 @@ pd.set_option("display.max_columns", None)
 
 
 from scripts.params import get_params
+from scripts.aux_functions import get_all_results_matching, subset_of_columns, clean_modelname
 
 params = get_params()
 
@@ -32,10 +33,10 @@ from scripts.epftoolbox_dm_gw import DM, plot_multivariate_DM_test, GW, plot_mul
 # In[4]:
 
 
-dataroute = os.path.join("..", "data")
-dumproute = os.path.join("..", "dump")
-resultsroute = os.path.join("..", "results")
-graphsroute = os.path.join(resultsroute, "graphs")
+dataroute = params["dataroute"]
+resultsroute = params["resultsroute"]
+dumproute = params["dumproute"]
+graphsroute = params["graphsroute"]
 
 
 # In[5]:
@@ -59,31 +60,11 @@ df_test.index=pd.to_datetime(df_test.index.copy())
 # In[7]:
 
 
-def get_all_results_matching(substrings:str):
-    all_results = {}
-
-    for filename in os.listdir(resultsroute):
-        file_path = os.path.join(resultsroute, filename)
-        coincidences=0
-        if os.path.isfile(file_path):
-            for substring in substrings:
-                if substring in filename:
-                    coincidences+=1
-            if coincidences == len(substrings):
-                all_results[filename] = file_path
-
-    print(all_results)
-    return all_results
+all_forecasts = get_all_results_matching(params["resultsroute"], ["forecast"])
+all_residuals = get_all_results_matching(params["resultsroute"], ["residual"])
 
 
 # In[8]:
-
-
-all_forecasts = get_all_results_matching(["forecast", params["tablename"]])
-all_residuals = get_all_results_matching(["residual", params["tablename"]])
-
-
-# In[9]:
 
 
 def get_only_log_rets(dict_with_dfs: dict, stock: str):
@@ -100,7 +81,7 @@ def get_only_log_rets(dict_with_dfs: dict, stock: str):
     return df
 
 
-# In[10]:
+# In[9]:
 
 
 def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
@@ -113,13 +94,7 @@ def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
         for stock in dict_with_dfs.keys():
             df = get_only_log_rets(dict_with_dfs, stock)
 
-            modelname = (
-                name.replace(f"{substring_to_replace}.pickle", "")
-                .replace("best", "")
-                .replace(params["tablename"], "")
-                .replace("__", "_")
-                .replace("__", "_")
-            )
+            modelname = clean_modelname(name, substring_to_replace, tablename=params["tablename"])
 
             df.columns = [modelname + "_" + stock]
 
@@ -132,21 +107,21 @@ def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
     return created_df
 
 
-# In[11]:
+# In[10]:
 
 
 forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
 forecasts_df.tail(2)
 
 
-# In[12]:
+# In[11]:
 
 
 residual_df = create_df_from_results_dict(all_residuals, "residuals")
 residual_df.head(2)
 
 
-# In[13]:
+# In[12]:
 
 
 lower_date=pd.to_datetime(params["start_test"])+pd.Timedelta(days=1)
@@ -156,14 +131,14 @@ df_test = df_test[lower_date:higher_date].copy()
 residual_df.head()
 
 
-# In[14]:
+# In[13]:
 
 
 # estadisticos de nans
 ((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
 
 
-# In[15]:
+# In[14]:
 
 
 # estadisticos de nans
@@ -173,19 +148,7 @@ residual_df.head()
 
 # ## Separating in different stocks
 
-# In[16]:
-
-
-def subset_of_columns(df: pd.DataFrame, substring: str, exclude:str=None):
-    filtered_columns = [col for col in df.columns if substring in col] 
-    
-    if exclude is not None:
-        filtered_columns = [col for col in filtered_columns.copy() if exclude not in col] 
-
-    return df[filtered_columns]
-
-
-# In[17]:
+# In[15]:
 
 
 def separate_by_stock(df:pd.DataFrame):
@@ -200,14 +163,14 @@ def separate_by_stock(df:pd.DataFrame):
      return stock_dict      
 
 
-# In[18]:
+# In[16]:
 
 
 forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
-# In[19]:
+# In[17]:
 
 
 def delete_in_column_names(df:pd.DataFrame, string:str):
@@ -219,11 +182,19 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[20]:
+# In[18]:
 
 
 dmroute=os.path.join(graphsroute, "DM")
 gwroute=os.path.join(graphsroute, "GW")
+
+for folder_path in [dmroute, gwroute]:
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path, exist_ok=True)
+
+
+# In[19]:
+
 
 for stock in forecasts_by_stock.keys():
     print(stock)
@@ -237,7 +208,7 @@ for stock in forecasts_by_stock.keys():
                             path=dmroute)
 
 
-# In[21]:
+# In[20]:
 
 
 best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
@@ -267,14 +238,14 @@ for stock, dataframe in residuals_by_stock.items():
     best_models_by_stock[stock]= (metrics_df, best_dict)
 
 
-# In[22]:
+# In[21]:
 
 
 print(params["assetlist"][0])
 best_models_by_stock[params["assetlist"][0]][1]
 
 
-# In[23]:
+# In[22]:
 
 
 best_models_by_stock[params["assetlist"][0]][0]

@@ -27,6 +27,7 @@ np.random.seed(42)
 
 
 from scripts.params import get_params
+from scripts.aux_functions import save_as_pickle
 
 params = get_params()
 
@@ -34,9 +35,9 @@ params = get_params()
 # In[4]:
 
 
-dataroute = os.path.join("..", "data")
-processedroute = os.path.join("...", "processed")
-resultsroute = os.path.join("..", "results")
+dataroute = params["dataroute"]
+resultsroute = params["resultsroute"]
+dumproute = params["dumproute"]
 
 
 # ## Data Retrieval
@@ -279,20 +280,6 @@ def generate_GARCH_samples_residuals(
 # In[15]:
 
 
-def save_as_pickle(data, criterion: str, type_save: str):    
-    with open(
-        os.path.join(
-            resultsroute,
-            f"""GARCH_{params["tablename"]}_{criterion}_best_{type_save}.pickle""",
-        ),
-        "wb",
-    ) as output_file:
-        pickle.dump(data, output_file)
-
-
-# In[16]:
-
-
 forecasts_dict={"aic":{}, "bic":{}}
 residuals_dict={"aic":{}, "bic":{}}
 
@@ -308,19 +295,42 @@ for criterion, dictionary in zip(["aic", "bic"], [best_aic, best_bic]):
         residuals_dict[criterion][stock]=residuals     
 
 
-# In[17]:
+# In[16]:
 
 
-for criterion, bestmodels in zip(["aic", "bic"],[best_aic, best_bic]):
-    save_as_pickle(forecasts_dict[criterion], criterion=criterion, type_save="forecasts")
-    save_as_pickle(residuals_dict[criterion], criterion=criterion, type_save="residuals")
-    save_as_pickle(bestmodels, criterion=criterion, type_save="models")
+for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
+    save_as_pickle(
+        data=forecasts_dict[criterion],
+        resultsroute=params["resultsroute"],
+        model_type="GARCH",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="forecasts",
+    )
+
+    save_as_pickle(
+        data=residuals_dict[criterion],
+        resultsroute=params["resultsroute"],
+        model_type="GARCH",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="residuals"
+    )
+
+    save_as_pickle(
+        data=bestmodels,
+        resultsroute=params["resultsroute"],
+        model_type="GARCH",
+        tablename=params["tablename"],
+        criterion=criterion,
+        type_save="models"
+    )
 
 
 # # Plotting
 # ## TODO: Esto aun está feo: tengo que armar que esto devuelva el plotteo de returns y los predicts uno encima del otro
 
-# In[18]:
+# In[17]:
 
 
 def plot_close_rets(data, model, key, name):
@@ -345,7 +355,7 @@ def plot_close_rets(data, model, key, name):
     )
 
 
-# In[19]:
+# In[18]:
 
 
 # for key in data.keys():
