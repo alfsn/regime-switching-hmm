@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[62]:
 
 
 import numpy as np
@@ -18,13 +18,13 @@ import yfinance as yf
 yf.pdr_override()
 
 
-# In[2]:
+# In[63]:
 
 
 np.random.seed(42)
 
 
-# In[3]:
+# In[64]:
 
 
 from scripts.params import get_params
@@ -37,13 +37,13 @@ tickerlist=params["tickerlist"]
 stockslist=params["stockslist"]
 
 
-# In[4]:
+# In[65]:
 
 
 tickerlist
 
 
-# In[5]:
+# In[66]:
 
 
 dataroute=os.path.join("..",  "data")
@@ -53,13 +53,13 @@ resultsroute=os.path.join("..",  "results")
 
 # ## Data Retrieval
 
-# In[6]:
+# In[67]:
 
 
 ohlclist=["Open", "High", "Low", "Close"]
 
 
-# In[7]:
+# In[68]:
 
 
 objectlist=[]
@@ -68,7 +68,7 @@ for item in tickerlist:
     objectlist.append(yf.Ticker(item))
 
 
-# In[8]:
+# In[69]:
 
 
 def download_or_load_data(start, end, tablename, datatype, dataroute):
@@ -89,7 +89,7 @@ def download_or_load_data(start, end, tablename, datatype, dataroute):
     return data
 
 
-# In[35]:
+# In[70]:
 
 
 train_data = download_or_load_data(
@@ -115,13 +115,13 @@ datasets = [train_data, test_data]
 
 # ## Data quality deletion
 
-# In[37]:
+# In[71]:
 
 
 dq_index=pd.to_datetime(params["data_quality_dates"])
 
 
-# In[38]:
+# In[72]:
 
 
 for data in datasets:
@@ -132,7 +132,7 @@ for data in datasets:
 
 # ## Implicit USD calculation
 
-# In[39]:
+# In[73]:
 
 
 def _reindex_refill_dfs(df1, df2):
@@ -150,7 +150,7 @@ def _reindex_refill_dfs(df1, df2):
     return df3, df4
 
 
-# In[40]:
+# In[74]:
 
 
 def calculate_usd(usd_df, ars_df, conversion_factor):
@@ -164,13 +164,13 @@ def calculate_usd(usd_df, ars_df, conversion_factor):
     return implicit_usd
 
 
-# In[41]:
+# In[75]:
 
 
 params["stocksdict"].items()
 
 
-# In[42]:
+# In[76]:
 
 
 usd_col_set=set()
@@ -184,7 +184,7 @@ for data in datasets:
 usd_col_set
 
 
-# In[43]:
+# In[77]:
 
 
 for data in datasets:
@@ -197,7 +197,7 @@ for data in datasets:
     data["USD"]["Average"]=data["USD"].mean(axis=1)
 
 
-# In[44]:
+# In[78]:
 
 
 for data in datasets:
@@ -206,16 +206,16 @@ for data in datasets:
         # revisar esto
 
 
-# In[45]:
+# In[79]:
 
 
 for data in datasets:
-    data["USD"][[*ohlclist, "Average"]].plot(figsize=(10,10), logy=True, grid=True)
+    data["USD"][[*ohlclist, "Average"]].plot(figsize=(10,10), logy=False, grid=True)
 
 
 # ## USD Denominated Index
 
-# In[46]:
+# In[80]:
 
 
 for data in datasets:
@@ -236,7 +236,7 @@ for data in datasets:
 # 
 # Garman, M. B. and M. J. Klass (1980). On the estimation of security price volatilities from historical data. Journal of Business 53, 67–78.
 
-# In[47]:
+# In[81]:
 
 
 def gk_vol(o, h, l, c):
@@ -246,7 +246,7 @@ def gk_vol(o, h, l, c):
 
 # ## Returns Calculation
 
-# In[48]:
+# In[82]:
 
 
 for data in datasets:
@@ -265,7 +265,7 @@ for data in datasets:
 # ## Process into single dataframe, matching dates and forward filling
 # Véase https://github.com/alfsn/regime-switching-hmm/issues/9
 
-# In[49]:
+# In[83]:
 
 
 df_train = pd.DataFrame()
@@ -279,7 +279,7 @@ for df, data in zip(df_datasets, datasets):
             df[key+"_"+column]=value[column]
 
 
-# In[50]:
+# In[84]:
 
 
 for df in df_datasets:
@@ -289,14 +289,16 @@ for df in df_datasets:
 
 # ## Excluimos los dólares implícitos
 
-# In[51]:
+# In[85]:
 
 
 datasets[0].keys()
 
 
-# In[52]:
+# In[89]:
 
+
+delete_usdlist = True
 
 for data in datasets:
     usdlist=[]
@@ -308,13 +310,14 @@ for data in datasets:
 
     print(usdlist)
 
-    for col in usdlist:
-        del data[col]
+    if delete_usdlist:
+        for col in usdlist:
+            del data[col]
 
 
 # ## Save dataset
 
-# In[53]:
+# In[91]:
 
 
 for data, name in zip(datasets, ["train", "test"]):
@@ -323,7 +326,7 @@ for data, name in zip(datasets, ["train", "test"]):
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[54]:
+# In[92]:
 
 
 particular_USDs=[column for column in df.columns if ((column.startswith("USD")) and (params["index"] not in column))]
@@ -333,17 +336,19 @@ particular_USDs.remove("USD_gk_vol")
 particular_USDs
 
 
-# In[55]:
+# In[93]:
 
 
 df_clean_datasets=[]
-for df in df_datasets:
-    df_clean= df.drop(columns=particular_USDs)
-    assert not (df_clean.isna()).any().any(), "Existen n/a"
-    df_clean_datasets.append(df_clean)
+
+if delete_usdlist:
+    for df in df_datasets:
+        df_clean= df.drop(columns=particular_USDs)
+        assert not (df_clean.isna()).any().any(), "Existen n/a"
+        df_clean_datasets.append(df_clean)
 
 
-# In[56]:
+# In[96]:
 
 
 for df_clean, name in zip(df_clean_datasets, ["train", "test"]):

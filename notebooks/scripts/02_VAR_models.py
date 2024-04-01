@@ -100,15 +100,6 @@ def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
     return columns
 
 
-# In[11]:
-
-
-selected_orders = VAR(df[["BBAR_log_rets", "BBAR_gk_vol"]]).select_order(
-    maxlags=None, trend="c"
-)
-selected_orders.selected_orders
-
-
 # In[12]:
 
 
@@ -164,12 +155,6 @@ def generate_VAR_samples_residuals(
     residuals = pd.DataFrame(np.concatenate(resid_holder), columns=columns, index=oos_data.index)
 
     return forecasts, residuals
-
-
-# In[15]:
-
-
-np.empty((0,2))
 
 
 # In[16]:

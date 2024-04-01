@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[23]:
+# In[1]:
 
 
 import numpy as np
@@ -20,13 +20,13 @@ import os
 import pickle
 
 
-# In[24]:
+# In[2]:
 
 
 np.random.seed(42)
 
 
-# In[25]:
+# In[3]:
 
 
 from scripts.params import get_params
@@ -34,7 +34,7 @@ from scripts.params import get_params
 params = get_params()
 
 
-# In[26]:
+# In[4]:
 
 
 dataroute = os.path.join("..", "data")
@@ -45,7 +45,7 @@ descriptivegraphsroute=os.path.join(resultsroute, "graphs", "descriptive")
 
 # ## Data Retrieval
 
-# In[27]:
+# In[5]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -54,7 +54,7 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[28]:
+# In[6]:
 
 
 df.head()
@@ -62,7 +62,7 @@ df.head()
 
 # ## Descriptive graphs
 
-# In[29]:
+# In[7]:
 
 
 log_rets_list=[]
@@ -74,14 +74,14 @@ for column in df.columns:
         vol_list.append(column)
 
 
-# In[30]:
+# In[8]:
 
 
 sb.set_style(style='darkgrid')
 sb.set_palette(sb.color_palette(palette='deep'))
 
 
-# In[31]:
+# In[9]:
 
 
 for column in log_rets_list:
@@ -90,7 +90,7 @@ for column in log_rets_list:
     plt.close()
 
 
-# In[32]:
+# In[10]:
 
 
 for column in vol_list:
@@ -101,13 +101,13 @@ for column in vol_list:
 
 # ### Autocorrelograms
 
-# In[33]:
+# In[11]:
 
 
 acf_lags=252
 
 
-# In[34]:
+# In[12]:
 
 
 def save_acf(column, path):
@@ -127,7 +127,7 @@ def save_acf(column, path):
     plt.close()
 
 
-# In[35]:
+# In[13]:
 
 
 for column in log_rets_list:
@@ -137,7 +137,7 @@ for column in log_rets_list:
                  "acf", "log_rets", f"{column}.png"))
 
 
-# In[36]:
+# In[14]:
 
 
 for column in vol_list:
@@ -147,7 +147,7 @@ for column in vol_list:
                  "acf", "gk_vol", f"{column}.png"))
 
 
-# In[37]:
+# In[15]:
 
 
 def save_pacf(column, path):
@@ -171,7 +171,7 @@ def save_pacf(column, path):
     plt.close()
 
 
-# In[38]:
+# In[16]:
 
 
 for column in log_rets_list:
@@ -181,7 +181,7 @@ for column in log_rets_list:
                  "pacf", "log_rets", f"{column}.png"))
 
 
-# In[39]:
+# In[17]:
 
 
 for column in vol_list:
@@ -191,7 +191,7 @@ for column in vol_list:
                  "pacf", "gk_vol", f"{column}.png"))
 
 
-# In[40]:
+# In[18]:
 
 
 def save_hist_normal(column, path):
@@ -214,7 +214,7 @@ def save_hist_normal(column, path):
     plt.close()
 
 
-# In[41]:
+# In[19]:
 
 
 for column in log_rets_list:
@@ -225,7 +225,7 @@ for column in log_rets_list:
             "histograms", f"{column}.png"))
 
 
-# In[42]:
+# In[20]:
 
 
 for column in vol_list:
@@ -236,7 +236,7 @@ for column in vol_list:
             "histograms", f"{column}.png"))
 
 
-# In[43]:
+# In[21]:
 
 
 def analyze_skew_kurt(dataframe):
@@ -251,7 +251,7 @@ def analyze_skew_kurt(dataframe):
     return results
 
 
-# In[44]:
+# In[22]:
 
 
 analyze_skew_kurt(df[log_rets_list].fillna(0))

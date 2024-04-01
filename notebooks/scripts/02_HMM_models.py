@@ -275,7 +275,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[22]:
+# In[27]:
 
 
 def generate_HMM_samples_residuals(model, insample_data, oos_data):
@@ -374,10 +374,10 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
     residuals = return_residuals(oos_data, forecasts)
 
     print("failed models: ", counter)
-    return probabilities, forecasts, residuals
+    return probabilities, forecasts, residuals, counter
 
 
-# In[23]:
+# In[28]:
 
 
 def save_as_pickle(data, modeltype: str, criterion: str, type_save: str):
@@ -391,7 +391,7 @@ def save_as_pickle(data, modeltype: str, criterion: str, type_save: str):
         pickle.dump(data, output_file)
 
 
-# In[24]:
+# In[29]:
 
 
 def generate_and_save_samples(
@@ -407,6 +407,7 @@ def generate_and_save_samples(
     probabilities = {stock: None for stock in tickerlist}
     forecasts = {stock: None for stock in tickerlist}
     residuals = {stock: None for stock in tickerlist}
+    failed = {stock: None for stock in tickerlist}
 
     print(">" * 10, modeltype, criterion)
 
@@ -416,7 +417,7 @@ def generate_and_save_samples(
             stock=stock, contains_vol=contains_vol, contains_USD=contains_USD
         )
 
-        proba, fcast, resid = generate_HMM_samples_residuals(
+        proba, fcast, resid, fails = generate_HMM_samples_residuals(
             best_model_dict[stock],
             insample_data=insample_data[columns],
             oos_data=oos_data[columns],
@@ -425,6 +426,7 @@ def generate_and_save_samples(
         probabilities[stock] = proba
         forecasts[stock] = fcast
         residuals[stock] = resid
+        failed[stock] = fails
 
     save_as_pickle(
         data=residuals, modeltype=modeltype, criterion=criterion, type_save="residuals"
@@ -432,9 +434,12 @@ def generate_and_save_samples(
     save_as_pickle(
         data=forecasts, modeltype=modeltype, criterion=criterion, type_save="forecasts"
     )
+    save_as_pickle(
+        data=failed, modeltype=modeltype, criterion=criterion, type_save="model_fails"
+    )
 
 
-# In[25]:
+# In[30]:
 
 
 models_dict = {
@@ -451,7 +456,7 @@ models_dict = {
 }
 
 
-# In[26]:
+# In[31]:
 
 
 for criterion, type_dict in models_dict.items():
@@ -472,23 +477,23 @@ for criterion, type_dict in models_dict.items():
             print(f"MODEL FALILURE: {criterion}, {modeltype}")
 
 
-# In[27]:
+# In[33]:
 
 
-file="HMM_multiv_AR_^MERV_aic_best_residuals.pickle"
+file=f"""HMM_multiv_{params["tablename"]}_aic_best_residuals.pickle"""
 with open(os.path.join(resultsroute, file), "rb") as f:
     opened_pickle=pickle.load(f)
 
 
-# In[28]:
+# In[35]:
 
 
-opened_pickle["BBAR"]
+opened_pickle[params["index"]].tail()
 
 
 # # Graficando
 
-# In[29]:
+# In[ ]:
 
 
 def plot_close_rets_vol(model, data, key, IC):
@@ -517,7 +522,7 @@ def plot_close_rets_vol(model, data, key, IC):
     plt.savefig(os.path.join(resultsroute, "graphs", f"HMM", f"{key}_model_{IC}.png"))
 
 
-# In[30]:
+# In[ ]:
 
 
 # for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
