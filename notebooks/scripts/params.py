@@ -31,5 +31,6 @@ def get_params():
     yaml_data["dataroute"]=os.path.join("..", "data", yaml_data["tablename"])
     yaml_data["dumproute"]=os.path.join("..", "dump", yaml_data["tablename"])
     yaml_data["resultsroute"]=os.path.join("..", "results", yaml_data["tablename"])
+    yaml_data["graphsroute"]=os.path.join("..", "graphs", yaml_data["tablename"])
     
     return yaml_data
