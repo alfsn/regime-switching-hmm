@@ -28,4 +28,8 @@ def get_params():
     # all assets - includes synthethic index
     yaml_data['assetlist'] = [yaml_data['index'], "USD_"+yaml_data['index']]+yaml_data['stockslist'].copy()
     
+    yaml_data["dataroute"]=os.path.join("..", "data", yaml_data["tablename"])
+    yaml_data["dumproute"]=os.path.join("..", "dump", yaml_data["tablename"])
+    yaml_data["resultsroute"]=os.path.join("..", "results", yaml_data["tablename"])
+    
     return yaml_data
