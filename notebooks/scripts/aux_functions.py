@@ -2,7 +2,13 @@ import os
 import pickle
 
 def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
-    """Devuelve una lista con los nombres de columnas para distintas especificaciones"""
+    """
+    Generates a list of column names based on the provided stock symbol,
+    whether volatility data is included, and whether USD data is included.
+
+    Returns:
+        list: A list of column names.
+    """
     columns = []
     columns.append(f"{stock}_log_rets")
 
@@ -16,7 +22,11 @@ def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
     return columns
 
 
+
 def save_as_pickle(data, resultsroute:str, model_type:str, tablename:str, criterion: str, type_save: str):    
+    """
+    Saves data as a pickle file with a descriptive filename based on the provided parameters.
+    """
     with open(
         os.path.join(
             resultsroute,
@@ -25,3 +35,27 @@ def save_as_pickle(data, resultsroute:str, model_type:str, tablename:str, criter
         "wb",
     ) as output_file:
         pickle.dump(data, output_file)
+        
+        
+def get_all_results_matching(resultsroute:str, substrings:list):
+    """
+    Finds all pickle files in a directory that contain all of the provided substrings in their filenames.
+
+    Returns:
+        dict: A dictionary mapping filenames to their corresponding file paths,
+            or an empty dictionary if no matching files are found.
+    """
+    all_results = {}
+
+    for filename in os.listdir(resultsroute):
+        file_path = os.path.join(resultsroute, filename)
+        coincidences=0
+        if os.path.isfile(file_path):
+            for substring in substrings:
+                if substring in filename:
+                    coincidences+=1
+            if coincidences == len(substrings):
+                all_results[filename] = file_path
+
+    print(all_results)
+    return all_results
