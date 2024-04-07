@@ -76,7 +76,7 @@ tickerlist = params["tickerlist"]
 # In[9]:
 
 
-range_states = range(1, 16)
+range_states = range(1, 11)
 emptydf = pd.DataFrame(columns=["AIC", "BIC"], index=range_states)
 emptydf.fillna(np.inf, inplace=True)
 results_dict_df = {stock: emptydf for stock in tickerlist}
@@ -150,22 +150,6 @@ results_dict_df_univ = fit_hmm_model(
 # In[13]:
 
 
-results_dict_df_with_vol = fit_hmm_model(
-    df, tickerlist, range_states, param_dict, contains_vol=True, contains_USD=False
-)
-
-
-# In[14]:
-
-
-results_dict_df_multi = fit_hmm_model(
-    df, tickerlist, range_states, param_dict, contains_vol=True, contains_USD=True
-)
-
-
-# In[15]:
-
-
 def select_best_model(
     df: pd.DataFrame,
     results_dict: dict,
@@ -200,7 +184,7 @@ def select_best_model(
     return aic_best_model, bic_best_model
 
 
-# In[16]:
+# In[14]:
 
 
 aic_best_model_univ, bic_best_model_univ = select_best_model(
@@ -213,35 +197,9 @@ aic_best_model_univ, bic_best_model_univ = select_best_model(
 )
 
 
-# In[17]:
-
-
-aic_best_model_with_vol, bic_best_model_with_vol = select_best_model(
-    df=df,
-    results_dict=results_dict_df_with_vol,
-    tickerlist=tickerlist,
-    param_dict=param_dict,
-    contains_vol=False,
-    contains_USD=False,
-)
-
-
-# In[18]:
-
-
-aic_best_model_multi, bic_best_model_multi = select_best_model(
-    df=df,
-    results_dict=results_dict_df_multi,
-    tickerlist=tickerlist,
-    param_dict=param_dict,
-    contains_vol=False,
-    contains_USD=False,
-)
-
-
 # # Generating out of sample data
 
-# In[19]:
+# In[15]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -250,7 +208,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[20]:
+# In[16]:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
@@ -258,7 +216,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[21]:
+# In[17]:
 
 
 def generate_HMM_samples_residuals(model, insample_data, oos_data):
@@ -360,7 +318,7 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
     return probabilities, forecasts, residuals, counter
 
 
-# In[22]:
+# In[18]:
 
 
 def generate_and_save_samples(
@@ -425,24 +383,20 @@ def generate_and_save_samples(
     )
 
 
-# In[23]:
+# In[19]:
 
 
 models_dict = {
     "aic": {
-        "univ": (aic_best_model_univ, False, False),
-        "with_vol": (aic_best_model_with_vol, True, False),
-        "multiv": (aic_best_model_multi, True, True),
+        "univ": (aic_best_model_univ, False, False)
     },
     "bic": {
-        "univ": (bic_best_model_univ, False, False),
-        "with_vol": (bic_best_model_with_vol, True, False),
-        "multiv": (bic_best_model_multi, True, True),
+        "univ": (bic_best_model_univ, False, False)
     },
 }
 
 
-# In[24]:
+# In[20]:
 
 
 for criterion, type_dict in models_dict.items():
@@ -463,7 +417,7 @@ for criterion, type_dict in models_dict.items():
             print(f"MODEL FALILURE: {criterion}, {modeltype}")
 
 
-# In[25]:
+# In[21]:
 
 
 file=f"""HMM_multiv_{params["tablename"]}_aic_best_residuals.pickle"""
@@ -471,73 +425,8 @@ with open(os.path.join(resultsroute, file), "rb") as f:
     opened_pickle=pickle.load(f)
 
 
-# In[26]:
+# In[22]:
 
 
 opened_pickle[params["index"]].tail()
-
-
-# In[7]:
-
-
-fails_dict=get_all_results_matching(resultsroute, ["fail"])
-
-
-# In[13]:
-
-
-fails_df=pd.DataFrame()
-for name, dir in fails_dict.items():
-    dict_with_dfs = pd.read_pickle(dir)
-    colname = clean_modelname(name, substring_to_replace="model_fails", tablename=params["tablename"])
-    fails_df[colname]=dict_with_dfs
-    os.remove(dir)
-
-fails_df=fails_df/len(df_test.index)
-fails_df.to_csv(path_or_buf=os.path.join(params["resultsroute"], f"""HMM_{params["tablename"]}_fails.csv"""))
-
-
-# # Graficando
-
-# In[27]:
-
-
-def plot_close_rets_vol(model, data, key, IC):
-    prediction = model.predict(data)
-    states = set(prediction)
-
-    fig = plt.figure(figsize=(20, 20))
-    plt.tight_layout()
-    plt.title(
-        f"{key} Log returns and intraday Vol\n{model.n_components} states / best by {IC}"
-    )
-
-    for subplot, var in zip(range(1, 3), data.columns):
-        plt.subplot(2, 1, subplot)
-        for i in set(prediction):
-            state = prediction == i
-            x = data.index[state]
-            y = data[var].iloc[state]
-            plt.plot(x, y, ".")
-        plt.legend(states, fontsize=16)
-
-        plt.grid(True)
-        plt.xlabel("datetime", fontsize=16)
-        plt.ylabel(var, fontsize=16)
-
-    plt.savefig(os.path.join(resultsroute, "graphs", f"HMM", f"{key}_model_{IC}.png"))
-
-
-# In[28]:
-
-
-# for dictionary, IC in zip([aic_best_model, bic_best_model], ["AIC", "BIC"]):
-#    for key, model in dictionary.items():
-#        columns = [f"{stock}_log_rets", f"{stock}_gk_vol"]
-#        insample_data = df[columns]
-#        oos_data = df_test[columns]
-#        train_end = insample_data.index.max()
-#        data = pd.concat([insample_data, oos_data])
-#
-#        plot_close_rets_vol(model, data, key, IC)
 
