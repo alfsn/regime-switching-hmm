@@ -13,7 +13,11 @@ end_test: "2024-01-02"
 data_quality_dates: ["2022-07-14", "2023-11-20"]
 
 # downloading data
+
 index: "^MERV"
+# warning: this indexname must contain the "^" char, as indexes appear in yahoo finance
+# else the model may confuse the local currency index with the estimated FX denominated index
+
 # this dictionary's format is
   # US_name: [US_name, local_name, conversion_factor]
   # these data are generally sourced from adr.com
