@@ -416,17 +416,3 @@ for criterion, type_dict in models_dict.items():
         except UnboundLocalError:
             print(f"MODEL FALILURE: {criterion}, {modeltype}")
 
-
-# In[21]:
-
-
-file=f"""HMM_multiv_{params["tablename"]}_aic_best_residuals.pickle"""
-with open(os.path.join(resultsroute, file), "rb") as f:
-    opened_pickle=pickle.load(f)
-
-
-# In[22]:
-
-
-opened_pickle[params["index"]].tail()
-

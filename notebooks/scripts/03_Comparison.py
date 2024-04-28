@@ -37,6 +37,8 @@ dataroute = params["dataroute"]
 resultsroute = params["resultsroute"]
 dumproute = params["dumproute"]
 graphsroute = params["graphsroute"]
+dmroute=params["dmroute"]
+gwroute=params["gwroute"]
 
 
 # In[5]:
@@ -111,14 +113,12 @@ def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
 
 
 forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
-forecasts_df.tail(2)
 
 
 # In[11]:
 
 
 residual_df = create_df_from_results_dict(all_residuals, "residuals")
-residual_df.head(2)
 
 
 # In[12]:
@@ -143,7 +143,6 @@ residual_df.head()
 
 # estadisticos de nans
 ((forecasts_df.isna().sum(axis=0) / len(forecasts_df.index)) * 100).nlargest(10)
-# HMM tiene problemas con NANs
 
 
 # ## Separating in different stocks
@@ -170,6 +169,15 @@ forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
+# In[26]:
+
+
+for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts", "residuals"]):
+    bystockname = name + "_by_stock_" + params["tablename"] + ".pickle"
+    with open(os.path.join(resultsroute, bystockname), "wb") as handle:
+        pickle.dump(df_clean, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
 # In[17]:
 
 
@@ -182,18 +190,7 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[18]:
-
-
-dmroute=os.path.join(graphsroute, "DM")
-gwroute=os.path.join(graphsroute, "GW")
-
-for folder_path in [dmroute, gwroute]:
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path, exist_ok=True)
-
-
-# In[19]:
+# In[21]:
 
 
 for stock in forecasts_by_stock.keys():
@@ -208,7 +205,7 @@ for stock in forecasts_by_stock.keys():
                             path=dmroute)
 
 
-# In[20]:
+# In[22]:
 
 
 best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
@@ -238,14 +235,14 @@ for stock, dataframe in residuals_by_stock.items():
     best_models_by_stock[stock]= (metrics_df, best_dict)
 
 
-# In[21]:
+# In[23]:
 
 
 print(params["assetlist"][0])
 best_models_by_stock[params["assetlist"][0]][1]
 
 
-# In[22]:
+# In[24]:
 
 
 best_models_by_stock[params["assetlist"][0]][0]
