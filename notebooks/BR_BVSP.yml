@@ -6,7 +6,7 @@ start_train: '2013-01-01'
 end_train: "2023-06-01"
 
 start_test: '2023-05-31' 
-end_test: "2023-12-01"
+end_test: "2024-01-02"
 # start_test requieres one day of overlap with end_train
 # this is since, by focusing on log-returns, it requires two days for each datum
 
