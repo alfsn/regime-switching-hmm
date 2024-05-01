@@ -17,6 +17,7 @@ def get_params():
     yaml_data["tablename"] = f"""{tablename_prefix}_{index}"""
 
     yaml_data["stockslist"] = []
+    
     # only stock tickers - excludes index
     for stock, lista in yaml_data["stocksdict"].items():
         local = lista[1]
@@ -26,6 +27,7 @@ def get_params():
 
     # all downloadable tickers
     yaml_data["tickerlist"] = [yaml_data["index"]] + yaml_data["stockslist"].copy()
+    
     # all assets - includes synthethic index
     yaml_data["assetlist"] = [
         yaml_data["index"],
