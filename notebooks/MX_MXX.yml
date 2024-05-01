@@ -34,10 +34,10 @@ stocksdict:
  - "FMX"
  - "FEMSAUBD.MX"
  - 10
- BMBOY: 
- - "BMBOY"
- - "BIMBOA.MX"
- - 4
+ CX: 
+ - "CX"
+ - "CEMEXCPO.MX"
+ - 10
 
 local_suffix: ".MX"
 
