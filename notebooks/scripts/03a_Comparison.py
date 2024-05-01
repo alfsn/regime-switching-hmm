@@ -59,14 +59,14 @@ with open(filename, "rb") as handle:
 df_test.index=pd.to_datetime(df_test.index.copy())
 
 
-# In[16]:
+# In[7]:
 
 
 all_forecasts = get_all_results_matching(params["resultsroute"], ["best_forecasts"])
 all_residuals = get_all_results_matching(params["resultsroute"], ["best_residuals"])
 
 
-# In[17]:
+# In[8]:
 
 
 def get_only_log_rets(dict_with_dfs: dict, stock: str):
@@ -83,7 +83,7 @@ def get_only_log_rets(dict_with_dfs: dict, stock: str):
     return df
 
 
-# In[18]:
+# In[9]:
 
 
 def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
@@ -109,25 +109,25 @@ def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
     return created_df
 
 
-# In[33]:
+# In[10]:
 
 
 forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
 
 
-# In[34]:
+# In[11]:
 
 
 forecasts_df = pd.concat([forecasts_df, subset_of_columns(df_test, "log_rets")])
 
 
-# In[35]:
+# In[12]:
 
 
 residual_df = create_df_from_results_dict(all_residuals, "residuals")
 
 
-# In[36]:
+# In[13]:
 
 
 lower_date=pd.to_datetime(params["start_test"])+pd.Timedelta(days=1)
@@ -137,14 +137,14 @@ df_test = df_test[lower_date:higher_date].copy()
 residual_df.head()
 
 
-# In[37]:
+# In[14]:
 
 
 # estadisticos de nans
 ((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
 
 
-# In[38]:
+# In[15]:
 
 
 # estadisticos de nans
@@ -153,7 +153,7 @@ residual_df.head()
 
 # ## Separating in different stocks
 
-# In[39]:
+# In[16]:
 
 
 def separate_by_stock(df:pd.DataFrame):
@@ -168,14 +168,14 @@ def separate_by_stock(df:pd.DataFrame):
      return stock_dict      
 
 
-# In[40]:
+# In[17]:
 
 
 forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
-# In[32]:
+# In[18]:
 
 
 for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts", "residuals"]):
@@ -184,7 +184,7 @@ for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts"
         pickle.dump(df_clean, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[17]:
+# In[19]:
 
 
 def delete_in_column_names(df:pd.DataFrame, string:str):
@@ -196,13 +196,13 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[21]:
+# In[20]:
 
 
 for stock in forecasts_by_stock.keys():
     print(stock)
     real_values=subset_of_columns(df_test, f"{stock}_log_rets")
-    forecasts=delete_in_column_names(forecasts_by_stock[stock].fillna(0), f"__{stock}")   
+    forecasts=delete_in_column_names(forecasts_by_stock[stock].fillna(0), f"_{stock}")   
 
     plot_multivariate_DM_test(real_price=real_values, 
                             forecasts=forecasts.fillna(0), 
@@ -211,13 +211,13 @@ for stock in forecasts_by_stock.keys():
                             path=dmroute)
 
 
-# In[22]:
+# In[21]:
 
 
 best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
 
 for stock, dataframe in residuals_by_stock.items():
-    dataframe = delete_in_column_names(dataframe, f"__{stock}")
+    dataframe = delete_in_column_names(dataframe, f"_{stock}")
     metrics_df = pd.DataFrame(index=["mse", "meanabs", "medianabs"])
 
     for column in dataframe.columns:
@@ -233,7 +233,8 @@ for stock, dataframe in residuals_by_stock.items():
             (single_model.abs()).median().median()
         )
     metrics_df = metrics_df * 100
-        
+    metrics_df = subset_of_columns(metrics_df, substring="", exclude="USD")
+    
     best_dict={}
     for criterion in metrics_df.index:
         best_dict[criterion] = metrics_df.iloc[metrics_df.index==criterion].idxmin(axis="columns").values[0]
@@ -241,15 +242,47 @@ for stock, dataframe in residuals_by_stock.items():
     best_models_by_stock[stock]= (metrics_df, best_dict)
 
 
+# In[22]:
+
+
+print(params["tickerlist"][0])
+best_models_by_stock[params["tickerlist"][0]][1]
+
+
 # In[23]:
 
 
-print(params["assetlist"][0])
-best_models_by_stock[params["assetlist"][0]][1]
+best_models_by_stock[params["tickerlist"][0]][0]
 
 
 # In[24]:
 
 
-best_models_by_stock[params["assetlist"][0]][0]
+best_models_by_stock[params["tickerlist"][0]][0].rank(axis=1)
+
+
+# In[25]:
+
+
+agg_df=(pd.DataFrame().reindex_like(best_models_by_stock[params["tickerlist"][0]][0]))
+
+for asset in params["tickerlist"]:
+    ranks = best_models_by_stock[asset][0].rank(axis=1)
+    agg_df = agg_df.add(ranks, fill_value=0)
+    
+agg_df
+
+
+# In[45]:
+
+
+agg_df.to_csv(os.path.join(resultsroute, f"""aggregate_results_df_{params["tablename"]}.csv"""))
+
+
+# In[40]:
+
+
+criterion="mse"
+print(f"Best overall performance by {criterion}")
+agg_df.T.nsmallest(3, f"{criterion}").index.to_list()
 
