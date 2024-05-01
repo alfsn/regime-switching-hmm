@@ -44,7 +44,7 @@ def get_params():
     
     model_graphs=[]
     for model in yaml_data["model_list"]:
-        yaml_data[f"{model}"]=os.path.join(yaml_data["forecastsgraphsroute"], "model")
+        yaml_data[f"{model}"]=os.path.join(yaml_data["forecastsgraphsroute"], f"{model}")
         model_graphs.append(yaml_data[f"{model}"])
 
     yaml_data["directories"] = [
