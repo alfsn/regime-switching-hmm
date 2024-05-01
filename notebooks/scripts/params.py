@@ -28,7 +28,7 @@ def get_params():
     # all downloadable tickers
     yaml_data["tickerlist"] = [yaml_data["index"]] + yaml_data["stockslist"].copy()
     
-    yaml_data["synth_index"] = "USD_" + yaml_data["index"].replace("^", "")
+    yaml_data["synth_index"] = yaml_data["index"].replace("^", "") + "_USD"
     # all assets - includes synthethic index
     yaml_data["assetlist"] = [yaml_data["synth_index"]] + yaml_data["tickerlist"].copy()
 
@@ -40,6 +40,13 @@ def get_params():
     yaml_data["dmroute"] = os.path.join(yaml_data["graphsroute"], "DM")
     yaml_data["gwroute"] = os.path.join(yaml_data["graphsroute"], "GW")
 
+    yaml_data["forecastsgraphsroute"] = os.path.join(yaml_data["graphsroute"], "forecasts")
+    
+    model_graphs=[]
+    for model in yaml_data["model_list"]:
+        yaml_data[f"{model}"]=os.path.join(yaml_data["forecastsgraphsroute"], "model")
+        model_graphs.append(yaml_data[f"{model}"])
+
     yaml_data["directories"] = [
         yaml_data["dataroute"],
         yaml_data["dumproute"],
@@ -48,6 +55,6 @@ def get_params():
         yaml_data["descriptivegraphsroute"],
         yaml_data["dmroute"],
         yaml_data["gwroute"],
-    ]
+    ] + model_graphs
 
     return yaml_data
