@@ -39,7 +39,7 @@ tickerlist = params["tickerlist"]
 stockslist = params["stockslist"]
 
 
-# In[4]:
+# In[5]:
 
 
 dataroute = params["dataroute"]
@@ -47,20 +47,20 @@ resultsroute = params["resultsroute"]
 dumproute = params["dumproute"]
 graphsroute = params["graphsroute"]
 
-for folder_path in [dataroute, dumproute, resultsroute, graphsroute]:
+for folder_path in params["directories"]:
     if not os.path.exists(folder_path):
         os.makedirs(folder_path, exist_ok=True)
 
 
 # ## Data Retrieval
 
-# In[5]:
+# In[6]:
 
 
 ohlclist = ["Open", "High", "Low", "Close"]
 
 
-# In[6]:
+# In[7]:
 
 
 objectlist = []
@@ -69,7 +69,7 @@ for item in tickerlist:
     objectlist.append(yf.Ticker(item))
 
 
-# In[7]:
+# In[8]:
 
 
 def download_or_load_data(start, end, tablename, datatype, dataroute):
@@ -90,7 +90,7 @@ def download_or_load_data(start, end, tablename, datatype, dataroute):
     return data
 
 
-# In[8]:
+# In[9]:
 
 
 train_data = download_or_load_data(
@@ -116,13 +116,13 @@ datasets = [train_data, test_data]
 
 # ## Data quality deletion
 
-# In[9]:
+# In[10]:
 
 
 dq_index = pd.to_datetime(params["data_quality_dates"])
 
 
-# In[10]:
+# In[11]:
 
 
 for data in datasets:
@@ -133,7 +133,7 @@ for data in datasets:
 
 # ## Implicit USD calculation
 
-# In[11]:
+# In[12]:
 
 
 def _reindex_refill_dfs(df1, df2):
@@ -151,7 +151,7 @@ def _reindex_refill_dfs(df1, df2):
     return df3, df4
 
 
-# In[12]:
+# In[13]:
 
 
 def calculate_usd(usd_df, ars_df, conversion_factor):
@@ -216,14 +216,16 @@ for data in datasets:
 
 
 for data in datasets:
-    data[f"""{params["index"]}_USD"""] = pd.DataFrame(columns=ohlclist)
+    usdindex_name=f"""{params["index"].replace('^', '')}_USD"""
+    
+    data[usdindex_name] = pd.DataFrame(columns=ohlclist)
 
     for col in ohlclist:
-        data[f"""{params["index"]}_USD"""][col] = (
+        data[usdindex_name][col] = (
             data[params["index"]][col] / data["USD"]["Average"]
         )
 
-    data[f"""{params["index"]}_USD"""].ffill(inplace=True)
+    data[usdindex_name].ffill(inplace=True)
 
 
 # ## Intraday Volatility
@@ -313,7 +315,7 @@ for data in datasets:
 
     usdlist.remove("USD")
 
-    usdlist.remove(f"""{params["index"]}_USD""")
+    usdlist.remove(usdindex_name)
 
 
     print(usdlist)
@@ -340,7 +342,7 @@ for data, name in zip(datasets, ["train", "test"]):
 particular_USDs = [
     column
     for column in df.columns
-    if ((column.startswith("USD")) and (params["index"] not in column))
+    if ((column.startswith("USD")) and (params["index"].replace('^', '') not in column))
 ]
 particular_USDs.remove("USD_rets")
 particular_USDs.remove("USD_log_rets")

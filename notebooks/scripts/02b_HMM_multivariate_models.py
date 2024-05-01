@@ -407,17 +407,3 @@ for modeltype, tupla in models_dict.items():
         contains_vol= contains_vol,
         contains_USD=contains_USD)          
 
-
-# In[27]:
-
-
-file = f"""HMM_multiv_{params["tablename"]}_aic_best_residuals.pickle"""
-with open(os.path.join(resultsroute, file), "rb") as f:
-    opened_pickle = pickle.load(f)
-
-
-# In[28]:
-
-
-opened_pickle[params["index"]].tail()
-

@@ -59,14 +59,14 @@ with open(filename, "rb") as handle:
 df_test.index=pd.to_datetime(df_test.index.copy())
 
 
-# In[7]:
+# In[16]:
 
 
-all_forecasts = get_all_results_matching(params["resultsroute"], ["forecast"])
-all_residuals = get_all_results_matching(params["resultsroute"], ["residual"])
+all_forecasts = get_all_results_matching(params["resultsroute"], ["best_forecasts"])
+all_residuals = get_all_results_matching(params["resultsroute"], ["best_residuals"])
 
 
-# In[8]:
+# In[17]:
 
 
 def get_only_log_rets(dict_with_dfs: dict, stock: str):
@@ -83,7 +83,7 @@ def get_only_log_rets(dict_with_dfs: dict, stock: str):
     return df
 
 
-# In[9]:
+# In[18]:
 
 
 def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
@@ -109,19 +109,25 @@ def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
     return created_df
 
 
-# In[10]:
+# In[33]:
 
 
 forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
 
 
-# In[11]:
+# In[34]:
+
+
+forecasts_df = pd.concat([forecasts_df, subset_of_columns(df_test, "log_rets")])
+
+
+# In[35]:
 
 
 residual_df = create_df_from_results_dict(all_residuals, "residuals")
 
 
-# In[12]:
+# In[36]:
 
 
 lower_date=pd.to_datetime(params["start_test"])+pd.Timedelta(days=1)
@@ -131,14 +137,14 @@ df_test = df_test[lower_date:higher_date].copy()
 residual_df.head()
 
 
-# In[13]:
+# In[37]:
 
 
 # estadisticos de nans
 ((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
 
 
-# In[14]:
+# In[38]:
 
 
 # estadisticos de nans
@@ -147,7 +153,7 @@ residual_df.head()
 
 # ## Separating in different stocks
 
-# In[15]:
+# In[39]:
 
 
 def separate_by_stock(df:pd.DataFrame):
@@ -162,14 +168,14 @@ def separate_by_stock(df:pd.DataFrame):
      return stock_dict      
 
 
-# In[16]:
+# In[40]:
 
 
 forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
-# In[26]:
+# In[32]:
 
 
 for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts", "residuals"]):

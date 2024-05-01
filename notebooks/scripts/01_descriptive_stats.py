@@ -15,7 +15,6 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from scipy.stats import norm
 import scipy.stats as scs
 
-
 import os
 import pickle
 
@@ -37,10 +36,11 @@ params = get_params()
 # In[4]:
 
 
-dataroute = os.path.join("..", "data")
-processedroute = os.path.join("...", "processed")
-resultsroute = os.path.join("..", "results")
-descriptivegraphsroute=os.path.join(resultsroute, "graphs", "descriptive")
+dataroute = params["dataroute"]
+resultsroute = params["resultsroute"]
+dumproute = params["dumproute"]
+graphsroute = params["graphsroute"]
+descriptivegraphsroute=params["descriptivegraphsroute"]
 
 
 # ## Data Retrieval
@@ -81,33 +81,33 @@ sb.set_style(style='darkgrid')
 sb.set_palette(sb.color_palette(palette='deep'))
 
 
-# In[9]:
+# In[10]:
 
 
 for column in log_rets_list:
     fig=df[column].plot(title=column).get_figure()
-    fig.savefig(os.path.join(descriptivegraphsroute, "log_rets", f"{column}.png"))
+    fig.savefig(os.path.join(descriptivegraphsroute, f"{column}_log_rets.png"))
     plt.close()
 
 
-# In[10]:
+# In[11]:
 
 
 for column in vol_list:
     fig=df[column].plot(title=column).get_figure()
-    fig.savefig(os.path.join(descriptivegraphsroute, "gk_vol", f"{column}.png"))
+    fig.savefig(os.path.join(descriptivegraphsroute, f"{column}_gk_vol.png"))
     plt.close()
 
 
 # ### Autocorrelograms
 
-# In[11]:
+# In[12]:
 
 
 acf_lags=252
 
 
-# In[12]:
+# In[13]:
 
 
 def save_acf(column, path):
@@ -127,27 +127,27 @@ def save_acf(column, path):
     plt.close()
 
 
-# In[13]:
+# In[15]:
 
 
 for column in log_rets_list:
     save_acf(column, 
              os.path.join(
                  descriptivegraphsroute, 
-                 "acf", "log_rets", f"{column}.png"))
+                 f"{column}_acf_log_rets.png"))
 
 
-# In[14]:
+# In[16]:
 
 
 for column in vol_list:
     save_acf(column, 
              os.path.join(
                  descriptivegraphsroute, 
-                 "acf", "gk_vol", f"{column}.png"))
+                 f"{column}_acf_gk_vol.png"))
 
 
-# In[15]:
+# In[17]:
 
 
 def save_pacf(column, path):
@@ -171,27 +171,27 @@ def save_pacf(column, path):
     plt.close()
 
 
-# In[16]:
+# In[18]:
 
 
 for column in log_rets_list:
     save_pacf(column, 
              os.path.join(
                  descriptivegraphsroute, 
-                 "pacf", "log_rets", f"{column}.png"))
+                 f"{column}_pacf_log_rets.png"))
 
 
-# In[17]:
+# In[19]:
 
 
 for column in vol_list:
     save_acf(column, 
              os.path.join(
                  descriptivegraphsroute, 
-                 "pacf", "gk_vol", f"{column}.png"))
+                 f"{column}_pacf_gk_vol.png"))
 
 
-# In[18]:
+# In[20]:
 
 
 def save_hist_normal(column, path):
@@ -214,7 +214,7 @@ def save_hist_normal(column, path):
     plt.close()
 
 
-# In[19]:
+# In[21]:
 
 
 for column in log_rets_list:
@@ -222,10 +222,10 @@ for column in log_rets_list:
         column,
         os.path.join(
             descriptivegraphsroute, 
-            "histograms", f"{column}.png"))
+            f"{column}_histogram.png"))
 
 
-# In[20]:
+# In[22]:
 
 
 for column in vol_list:
@@ -233,10 +233,10 @@ for column in vol_list:
         column,
         os.path.join(
             descriptivegraphsroute, 
-            "histograms", f"{column}.png"))
+            f"{column}_vol_histogram.png"))
 
 
-# In[21]:
+# In[23]:
 
 
 def analyze_skew_kurt(dataframe):
@@ -251,7 +251,7 @@ def analyze_skew_kurt(dataframe):
     return results
 
 
-# In[22]:
+# In[24]:
 
 
 analyze_skew_kurt(df[log_rets_list].fillna(0))
