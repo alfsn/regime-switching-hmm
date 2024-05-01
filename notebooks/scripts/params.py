@@ -28,11 +28,9 @@ def get_params():
     # all downloadable tickers
     yaml_data["tickerlist"] = [yaml_data["index"]] + yaml_data["stockslist"].copy()
     
+    yaml_data["synth_index"] = "USD_" + yaml_data["index"].replace("^", "")
     # all assets - includes synthethic index
-    yaml_data["assetlist"] = [
-        yaml_data["index"],
-        "USD_" + yaml_data["index"].replace("^", ""),
-    ] + yaml_data["stockslist"].copy()
+    yaml_data["assetlist"] = [yaml_data["synth_index"]] + yaml_data["tickerlist"].copy()
 
     yaml_data["dataroute"] = os.path.join("..", "data", yaml_data["tablename"])
     yaml_data["dumproute"] = os.path.join("..", "dump", yaml_data["tablename"])
