@@ -1,5 +1,5 @@
 ---
-tablename_prefix: "AR"
+tablename_prefix: "MX"
 
 # dates
 start_train: '2013-01-01'
@@ -7,14 +7,14 @@ end_train: "2023-06-01"
 
 start_test: '2023-05-31' 
 end_test: "2024-01-07"
-# start_test requieres one day of overlap with end_train, and a day following the final date
+# start_test requieres one day of overlap with end_train
 # this is since, by focusing on log-returns, it requires two days for each datum
 
-data_quality_dates: ["2022-07-14", "2023-11-20"]
+data_quality_dates: []
 
 # downloading data
 
-index: "^MERV"
+index: "^MXX"
 # warning: this indexname must contain the "^" char, as indexes appear in yahoo finance
 # else the model may confuse the local currency index with the estimated FX denominated index
 
@@ -22,27 +22,23 @@ index: "^MERV"
   # US_name: [US_name, local_name, conversion_factor]
   # these data are generally sourced from adr.com
 stocksdict: 
- GGAL: 
- - "GGAL"
- - "GGAL.BA" 
- - 10 
- YPF: 
- - "YPF"
- - "YPFD.BA"
- - 1
- EDN: 
- - "EDN"
- - "EDN.BA"
- - 20
- BMA: 
- - "BMA"
- - "BMA.BA"
+ WMMVY: 
+ - "WMMVY"
+ - "WALMEX.MX" 
  - 10
- BBAR: 
- - "BBAR"
- - "BBAR.BA"
- - 3
+ GBOOY: 
+ - "GBOOY"
+ - "GFNORTEO.MX"
+ - 5
+ FMX: 
+ - "FMX"
+ - "FEMSAUBD.MX"
+ - 10
+ CX: 
+ - "CX"
+ - "CEMEXCPO.MX"
+ - 10
 
-local_suffix: ".BA"
+local_suffix: ".MX"
 
 model_list: ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]

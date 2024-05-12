@@ -14,7 +14,7 @@ data_quality_dates: []
 
 # downloading data
 
-index: "SPCLXIGPA.SN"
+index: "SP-IPSA.SN"
 # https://github.com/alfsn/regime-switching-hmm/issues/75#issuecomment-2081601792
 # warning: this indexname must contain the "^" char, as indexes appear in yahoo finance
 # else the model may confuse the local currency index with the estimated FX denominated index
