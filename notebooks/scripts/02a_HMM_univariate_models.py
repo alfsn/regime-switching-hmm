@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[19]:
 
 
 import numpy as np
@@ -17,21 +17,21 @@ import pickle
 import warnings
 
 
-# In[2]:
+# In[20]:
 
 
 logging.captureWarnings(True)
 hmm.logging.disable(level=80)
 
 
-# In[3]:
+# In[21]:
 
 
 random_state = 42
 np.random.seed(random_state)
 
 
-# In[4]:
+# In[22]:
 
 
 from scripts.params import get_params
@@ -42,7 +42,7 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[5]:
+# In[23]:
 
 
 dataroute = params["dataroute"]
@@ -50,7 +50,7 @@ resultsroute = params["resultsroute"]
 dumproute = params["dumproute"]
 
 
-# In[6]:
+# In[24]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -59,30 +59,18 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[7]:
-
-
-df.head()
-
-
-# In[8]:
-
-
-tickerlist = params["tickerlist"]
-
-
 # ## HMM Training
 
-# In[9]:
+# In[25]:
 
 
 range_states = range(1, 11)
 emptydf = pd.DataFrame(columns=["AIC", "BIC"], index=range_states)
 emptydf.fillna(np.inf, inplace=True)
-results_dict_df = {stock: emptydf for stock in tickerlist}
+results_dict_df = {stock: emptydf for stock in params["assetlist"]}
 
 
-# In[10]:
+# In[26]:
 
 
 param_dict = {
@@ -93,7 +81,7 @@ param_dict = {
 }
 
 
-# In[11]:
+# In[27]:
 
 
 def fit_hmm_model(
@@ -107,7 +95,7 @@ def fit_hmm_model(
 
     results_dict_df = {}
 
-    for stock in tickerlist:
+    for stock in params["assetlist"]:
         results_dict_df[stock] = pd.DataFrame(
             index=range_states, columns=["AIC", "BIC"]
         )
@@ -139,15 +127,15 @@ def fit_hmm_model(
     return results_dict_df
 
 
-# In[12]:
+# In[28]:
 
 
 results_dict_df_univ = fit_hmm_model(
-    df, tickerlist, range_states, param_dict, contains_vol=False, contains_USD=False
+    df, params["assetlist"], range_states, param_dict, contains_vol=False, contains_USD=False
 )
 
 
-# In[13]:
+# In[29]:
 
 
 def select_best_model(
@@ -184,13 +172,13 @@ def select_best_model(
     return aic_best_model, bic_best_model
 
 
-# In[14]:
+# In[30]:
 
 
 aic_best_model_univ, bic_best_model_univ = select_best_model(
     df=df,
     results_dict=results_dict_df_univ,
-    tickerlist=tickerlist,
+    tickerlist=params["assetlist"],
     param_dict=param_dict,
     contains_vol=False,
     contains_USD=False,
@@ -199,7 +187,7 @@ aic_best_model_univ, bic_best_model_univ = select_best_model(
 
 # # Generating out of sample data
 
-# In[15]:
+# In[31]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -208,7 +196,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[16]:
+# In[32]:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
@@ -216,7 +204,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[17]:
+# In[33]:
 
 
 def generate_HMM_samples_residuals(model, insample_data, oos_data):
@@ -318,7 +306,7 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
     return probabilities, forecasts, residuals, counter
 
 
-# In[18]:
+# In[34]:
 
 
 def generate_and_save_samples(
@@ -383,7 +371,7 @@ def generate_and_save_samples(
     )
 
 
-# In[19]:
+# In[35]:
 
 
 models_dict = {
@@ -396,7 +384,7 @@ models_dict = {
 }
 
 
-# In[20]:
+# In[36]:
 
 
 for criterion, type_dict in models_dict.items():
@@ -409,7 +397,7 @@ for criterion, type_dict in models_dict.items():
                 criterion=criterion,
                 insample_data=df,
                 oos_data=df_test,
-                tickerlist=params["tickerlist"],
+                tickerlist=params["assetlist"],
                 contains_vol=contains_vol,
                 contains_USD=contains_USD,
             )

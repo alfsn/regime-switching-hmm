@@ -4,7 +4,7 @@
 # # Comparison
 # 
 
-# In[1]:
+# In[55]:
 
 
 import pandas as pd
@@ -15,7 +15,7 @@ import pickle
 pd.set_option("display.max_columns", None)
 
 
-# In[2]:
+# In[56]:
 
 
 from scripts.params import get_params
@@ -24,13 +24,13 @@ from scripts.aux_functions import get_all_results_matching, subset_of_columns, c
 params = get_params()
 
 
-# In[3]:
+# In[57]:
 
 
 from scripts.epftoolbox_dm_gw import DM, plot_multivariate_DM_test, GW, plot_multivariate_GW_test
 
 
-# In[4]:
+# In[58]:
 
 
 dataroute = params["dataroute"]
@@ -41,14 +41,14 @@ dmroute=params["dmroute"]
 gwroute=params["gwroute"]
 
 
-# In[5]:
+# In[59]:
 
 
 start_test = params["start_test"]
 local_suffix = params["local_suffix"]
 
 
-# In[6]:
+# In[60]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -59,14 +59,14 @@ with open(filename, "rb") as handle:
 df_test.index=pd.to_datetime(df_test.index.copy())
 
 
-# In[7]:
+# In[61]:
 
 
 all_forecasts = get_all_results_matching(params["resultsroute"], ["best_forecasts"])
 all_residuals = get_all_results_matching(params["resultsroute"], ["best_residuals"])
 
 
-# In[8]:
+# In[62]:
 
 
 def get_only_log_rets(dict_with_dfs: dict, stock: str):
@@ -83,7 +83,7 @@ def get_only_log_rets(dict_with_dfs: dict, stock: str):
     return df
 
 
-# In[9]:
+# In[63]:
 
 
 def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
@@ -109,25 +109,25 @@ def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
     return created_df
 
 
-# In[10]:
+# In[64]:
 
 
 forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
 
 
-# In[11]:
+# In[65]:
 
 
 forecasts_df = pd.concat([forecasts_df, subset_of_columns(df_test, "log_rets")])
 
 
-# In[12]:
+# In[66]:
 
 
 residual_df = create_df_from_results_dict(all_residuals, "residuals")
 
 
-# In[13]:
+# In[67]:
 
 
 lower_date=pd.to_datetime(params["start_test"])+pd.Timedelta(days=1)
@@ -137,14 +137,14 @@ df_test = df_test[lower_date:higher_date].copy()
 residual_df.head()
 
 
-# In[14]:
+# In[68]:
 
 
 # estadisticos de nans
 ((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
 
 
-# In[15]:
+# In[69]:
 
 
 # estadisticos de nans
@@ -153,7 +153,7 @@ residual_df.head()
 
 # ## Separating in different stocks
 
-# In[16]:
+# In[70]:
 
 
 def separate_by_stock(df:pd.DataFrame):
@@ -168,14 +168,14 @@ def separate_by_stock(df:pd.DataFrame):
      return stock_dict      
 
 
-# In[17]:
+# In[71]:
 
 
 forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
-# In[18]:
+# In[72]:
 
 
 for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts", "residuals"]):
@@ -184,7 +184,7 @@ for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts"
         pickle.dump(df_clean, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[19]:
+# In[73]:
 
 
 def delete_in_column_names(df:pd.DataFrame, string:str):
@@ -196,7 +196,7 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[20]:
+# In[74]:
 
 
 for stock in forecasts_by_stock.keys():
@@ -211,7 +211,7 @@ for stock in forecasts_by_stock.keys():
                             path=dmroute)
 
 
-# In[21]:
+# In[75]:
 
 
 best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
@@ -242,26 +242,26 @@ for stock, dataframe in residuals_by_stock.items():
     best_models_by_stock[stock]= (metrics_df, best_dict)
 
 
-# In[22]:
+# In[76]:
 
 
 print(params["tickerlist"][0])
 best_models_by_stock[params["tickerlist"][0]][1]
 
 
-# In[23]:
+# In[77]:
 
 
 best_models_by_stock[params["tickerlist"][0]][0]
 
 
-# In[24]:
+# In[78]:
 
 
 best_models_by_stock[params["tickerlist"][0]][0].rank(axis=1)
 
 
-# In[25]:
+# In[79]:
 
 
 agg_df=(pd.DataFrame().reindex_like(best_models_by_stock[params["tickerlist"][0]][0]))
@@ -273,13 +273,13 @@ for asset in params["tickerlist"]:
 agg_df
 
 
-# In[45]:
+# In[80]:
 
 
 agg_df.to_csv(os.path.join(resultsroute, f"""aggregate_results_df_{params["tablename"]}.csv"""))
 
 
-# In[40]:
+# In[81]:
 
 
 criterion="mse"

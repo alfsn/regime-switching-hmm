@@ -68,12 +68,6 @@ with open(filename, "rb") as handle:
 # In[7]:
 
 
-tickerlist = params["tickerlist"]
-
-
-# In[8]:
-
-
 def generate_VAR_samples_residuals(
     stock: str,
     lags: int,
@@ -116,7 +110,7 @@ def generate_VAR_samples_residuals(
     return forecasts, residuals
 
 
-# In[9]:
+# In[8]:
 
 
 def estimate_best_residuals(
@@ -148,7 +142,7 @@ def estimate_best_residuals(
     return best_lag, forecasts, residuals
 
 
-# In[10]:
+# In[9]:
 
 
 best_lags = {
@@ -162,7 +156,7 @@ for criterion in ["aic", "bic"]:
     for contains_USD in [True, False]:
         usdstring = f"contains_USD={contains_USD}"
 
-        for stock in tickerlist:
+        for stock in params["assetlist"]:
             best_lag, forecasts, residuals = estimate_best_residuals(
                 stock=stock,
                 criterion=criterion,
@@ -217,7 +211,7 @@ for criterion in ["aic", "bic"]:
         )
 
 
-# In[11]:
+# In[10]:
 
 
 for crit, d in best_residuals.items():

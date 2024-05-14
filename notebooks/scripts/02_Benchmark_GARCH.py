@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[16]:
 
 
 import numpy as np
@@ -17,13 +17,13 @@ import pickle
 import warnings
 
 
-# In[2]:
+# In[17]:
 
 
 np.random.seed(42)
 
 
-# In[3]:
+# In[18]:
 
 
 from scripts.params import get_params
@@ -32,7 +32,7 @@ from scripts.aux_functions import save_as_pickle
 params = get_params()
 
 
-# In[4]:
+# In[19]:
 
 
 dataroute = params["dataroute"]
@@ -42,7 +42,7 @@ dumproute = params["dumproute"]
 
 # ## Data Retrieval
 
-# In[5]:
+# In[20]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -51,17 +51,11 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[6]:
-
-
-df.head()
-
-
 # ## GARCH Training
-# Warning: this section only uses log_rets as y variables. See:
+# This section only uses log_rets as y variables. See:
 # https://github.com/alfsn/regime-switching-hmm/issues/35
 
-# In[7]:
+# In[21]:
 
 
 # Define the range of p and q values
@@ -71,21 +65,21 @@ q_values = [0, 1, 2, 3]  # Example: q values
 # all models with q=0 are exclusively ARCH (non-GARCH)
 
 
-# In[8]:
+# In[22]:
 
 
 models = {}
 predict = {}
 
 
-# In[9]:
+# In[23]:
 
 
 best_aic = {}
 best_bic = {}
 
 
-# In[10]:
+# In[24]:
 
 
 def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -105,7 +99,7 @@ def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[11]:
+# In[25]:
 
 
 def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -125,14 +119,14 @@ def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[12]:
+# In[26]:
 
 
 # Estimate ARMA-ARCH and ARMA-GARCH models for different p and q values
 nonconverged_models = 0
 ok_models = 0
 
-for key in params["tickerlist"]:
+for key in params["assetlist"]:
     returns = df[f"{key}_log_rets"]
 
     models[key] = {}
@@ -192,7 +186,7 @@ print(f"nonconverged: {nonconverged_models}")
 
 # # Residuals
 
-# In[13]:
+# In[27]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -201,7 +195,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[14]:
+# In[28]:
 
 
 def generate_GARCH_samples_residuals(
@@ -277,7 +271,7 @@ def generate_GARCH_samples_residuals(
     return forecasts, residuals
 
 
-# In[15]:
+# In[29]:
 
 
 forecasts_dict={"aic":{}, "bic":{}}
@@ -295,7 +289,7 @@ for criterion, dictionary in zip(["aic", "bic"], [best_aic, best_bic]):
         residuals_dict[criterion][stock]=residuals     
 
 
-# In[16]:
+# In[30]:
 
 
 for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
