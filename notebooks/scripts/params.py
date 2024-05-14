@@ -17,7 +17,7 @@ def get_params():
     yaml_data["tablename"] = f"""{tablename_prefix}_{index}"""
 
     yaml_data["stockslist"] = []
-    
+
     # only stock tickers - excludes index
     for stock, lista in yaml_data["stocksdict"].items():
         local = lista[1]
@@ -27,7 +27,7 @@ def get_params():
 
     # all downloadable tickers
     yaml_data["tickerlist"] = [yaml_data["index"]] + yaml_data["stockslist"].copy()
-    
+
     yaml_data["synth_index"] = yaml_data["index"].replace("^", "") + "_USD"
     # all assets - includes synthethic index
     yaml_data["assetlist"] = [yaml_data["synth_index"]] + yaml_data["tickerlist"].copy()
@@ -36,16 +36,24 @@ def get_params():
     yaml_data["dumproute"] = os.path.join("..", "dump", yaml_data["tablename"])
     yaml_data["resultsroute"] = os.path.join("..", "results", yaml_data["tablename"])
     yaml_data["graphsroute"] = os.path.join("..", "graphs", yaml_data["tablename"])
-    yaml_data["descriptivegraphsroute"] = os.path.join(yaml_data["graphsroute"], "descriptive")
+    yaml_data["descriptivegraphsroute"] = os.path.join(
+        yaml_data["graphsroute"], "descriptive"
+    )
     yaml_data["dmroute"] = os.path.join(yaml_data["graphsroute"], "DM")
     yaml_data["gwroute"] = os.path.join(yaml_data["graphsroute"], "GW")
 
-    yaml_data["forecastsgraphsroute"] = os.path.join(yaml_data["graphsroute"], "forecasts")
-    
-    model_graphs=[]
+    yaml_data["forecastsgraphsroute"] = os.path.join(
+        yaml_data["graphsroute"], "forecasts"
+    )
+    yaml_data["residualsgraphsroute"] = os.path.join(
+        yaml_data["graphsroute"], "residuals"
+    )
+
+    model_graphs = []
     for model in yaml_data["model_list"]:
-        yaml_data[f"{model}"]=os.path.join(yaml_data["forecastsgraphsroute"], f"{model}")
-        model_graphs.append(yaml_data[f"{model}"])
+        for dtype in ["forecasts", "residuals"]:
+            yaml_data[f"{model}_{dtype}"] = os.path.join(yaml_data[f"{dtype}graphsroute"], f"{model}")
+            model_graphs.append(yaml_data[f"{model}_{dtype}"])
 
     yaml_data["directories"] = [
         yaml_data["dataroute"],
