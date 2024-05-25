@@ -54,15 +54,9 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[6]:
-
-
-df.head()
-
-
 # ## Descriptive graphs
 
-# In[7]:
+# In[6]:
 
 
 log_rets_list=[]
@@ -74,14 +68,14 @@ for column in df.columns:
         vol_list.append(column)
 
 
-# In[8]:
+# In[7]:
 
 
 sb.set_style(style='darkgrid')
 sb.set_palette(sb.color_palette(palette='deep'))
 
 
-# In[10]:
+# In[8]:
 
 
 for column in log_rets_list:
@@ -90,7 +84,7 @@ for column in log_rets_list:
     plt.close()
 
 
-# In[11]:
+# In[9]:
 
 
 for column in vol_list:
@@ -101,13 +95,13 @@ for column in vol_list:
 
 # ### Autocorrelograms
 
-# In[12]:
+# In[10]:
 
 
 acf_lags=252
 
 
-# In[13]:
+# In[11]:
 
 
 def save_acf(column, path):
@@ -127,7 +121,7 @@ def save_acf(column, path):
     plt.close()
 
 
-# In[15]:
+# In[12]:
 
 
 for column in log_rets_list:
@@ -137,7 +131,7 @@ for column in log_rets_list:
                  f"{column}_acf_log_rets.png"))
 
 
-# In[16]:
+# In[13]:
 
 
 for column in vol_list:
@@ -147,7 +141,7 @@ for column in vol_list:
                  f"{column}_acf_gk_vol.png"))
 
 
-# In[17]:
+# In[14]:
 
 
 def save_pacf(column, path):
@@ -171,7 +165,7 @@ def save_pacf(column, path):
     plt.close()
 
 
-# In[18]:
+# In[15]:
 
 
 for column in log_rets_list:
@@ -181,7 +175,7 @@ for column in log_rets_list:
                  f"{column}_pacf_log_rets.png"))
 
 
-# In[19]:
+# In[16]:
 
 
 for column in vol_list:
@@ -191,7 +185,7 @@ for column in vol_list:
                  f"{column}_pacf_gk_vol.png"))
 
 
-# In[20]:
+# In[17]:
 
 
 def save_hist_normal(column, path):
@@ -214,7 +208,7 @@ def save_hist_normal(column, path):
     plt.close()
 
 
-# In[21]:
+# In[18]:
 
 
 for column in log_rets_list:
@@ -225,7 +219,7 @@ for column in log_rets_list:
             f"{column}_histogram.png"))
 
 
-# In[22]:
+# In[19]:
 
 
 for column in vol_list:
@@ -236,7 +230,7 @@ for column in vol_list:
             f"{column}_vol_histogram.png"))
 
 
-# In[23]:
+# In[20]:
 
 
 def analyze_skew_kurt(dataframe):
@@ -251,7 +245,7 @@ def analyze_skew_kurt(dataframe):
     return results
 
 
-# In[24]:
+# In[21]:
 
 
 analyze_skew_kurt(df[log_rets_list].fillna(0))

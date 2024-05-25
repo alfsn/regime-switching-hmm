@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[24]:
 
 
 import numpy as np
@@ -19,14 +19,14 @@ import pickle
 import warnings
 
 
-# In[2]:
+# In[25]:
 
 
 from pomegranate.distributions import Normal
 from pomegranate.hmm import DenseHMM
 
 
-# In[3]:
+# In[26]:
 
 
 random_state = 42
@@ -34,7 +34,7 @@ np.random.seed(random_state)
 logging.captureWarnings(True)
 
 
-# In[4]:
+# In[27]:
 
 
 from scripts.params import get_params
@@ -50,7 +50,7 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[5]:
+# In[28]:
 
 
 dataroute = params["dataroute"]
@@ -58,7 +58,7 @@ resultsroute = params["resultsroute"]
 dumproute = params["dumproute"]
 
 
-# In[6]:
+# In[29]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -67,7 +67,7 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[7]:
+# In[30]:
 
 
 df.head()
@@ -75,16 +75,16 @@ df.head()
 
 # ## HMM Training
 
-# In[8]:
+# In[31]:
 
 
 range_states = range(1, 16)
 emptydf = pd.DataFrame(columns=["AIC", "BIC"], index=range_states)
 emptydf.fillna(np.inf, inplace=True)
-results_dict_df = {stock: emptydf for stock in params["tickerlist"]}
+results_dict_df = {stock: emptydf for stock in params["assetlist"]}
 
 
-# In[9]:
+# In[32]:
 
 
 def from_df_to_reshaped(data: pd.DataFrame):
@@ -93,7 +93,7 @@ def from_df_to_reshaped(data: pd.DataFrame):
     return data_reshaped
 
 
-# In[10]:
+# In[33]:
 
 
 def GaussianHMM(data_reshaped: np.ndarray, n_state: int):
@@ -103,7 +103,7 @@ def GaussianHMM(data_reshaped: np.ndarray, n_state: int):
     return res
 
 
-# In[11]:
+# In[34]:
 
 
 def n_params(res: pm.hmm.dense_hmm.DenseHMM):
@@ -116,7 +116,7 @@ def n_params(res: pm.hmm.dense_hmm.DenseHMM):
     return n_params
 
 
-# In[12]:
+# In[35]:
 
 
 def get_aic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
@@ -128,7 +128,7 @@ def get_aic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
     return aic
 
 
-# In[13]:
+# In[36]:
 
 
 def get_bic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
@@ -139,7 +139,7 @@ def get_bic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
     return bic
 
 
-# In[14]:
+# In[37]:
 
 
 def select_best(data: pd.DataFrame, max_states=15):
@@ -167,7 +167,7 @@ def select_best(data: pd.DataFrame, max_states=15):
     return aic, bic
 
 
-# In[15]:
+# In[38]:
 
 
 def find_best_all_assets(
@@ -190,16 +190,7 @@ def find_best_all_assets(
     return best
 
 
-# In[16]:
-
-
-df[["USD_^BVSP_log_rets", "USD_^BVSP_gk_vol"]] = df[
-    ["^BVSP_log_rets", "^BVSP_gk_vol"]
-].copy()
-# transitorio pq issue #71
-
-
-# In[17]:
+# In[39]:
 
 
 for i in range(5):
@@ -214,7 +205,7 @@ for i in range(5):
         
 
 
-# In[18]:
+# In[40]:
 
 
 for i in range(5):
@@ -228,15 +219,9 @@ for i in range(5):
         print(f"Fail {i}, try again")
 
 
-# In[19]:
-
-
-best_multiv
-
-
 # # Generating out of sample data
 
-# In[20]:
+# In[41]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -245,16 +230,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[21]:
-
-
-df_test[["USD_^BVSP_log_rets", "USD_^BVSP_gk_vol"]] = df_test[
-    ["^BVSP_log_rets", "^BVSP_gk_vol"]
-].copy()
-# transitorio pq issue #71
-
-
-# In[22]:
+# In[42]:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
@@ -262,7 +238,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[23]:
+# In[43]:
 
 
 def generate_samples_residuals(n_state, insample_data, oos_data):
@@ -324,7 +300,7 @@ def generate_samples_residuals(n_state, insample_data, oos_data):
         
 
 
-# In[24]:
+# In[44]:
 
 
 def generate_and_save_samples(
@@ -335,7 +311,7 @@ def generate_and_save_samples(
     contains_vol: bool,
     contains_USD: bool,
 ):
-    generic_dict = {stock: None for stock in params["tickerlist"]}
+    generic_dict = {stock: None for stock in params["assetlist"]}
     probabilities = {"aic": generic_dict.copy(), "bic": generic_dict.copy()}
     forecasts = probabilities.copy()
     residuals = probabilities.copy()
@@ -385,7 +361,7 @@ def generate_and_save_samples(
         )
 
 
-# In[25]:
+# In[45]:
 
 
 models_dict = {
@@ -394,16 +370,23 @@ models_dict = {
 }
 
 
-# In[26]:
+# In[46]:
 
 
-for modeltype, tupla in models_dict.items():
-    best_model_dict, contains_vol, contains_USD = tupla
-    generate_and_save_samples(
-        best_model_dict=best_model_dict,
-        modeltype= modeltype,
-        insample_data=df,
-        oos_data=df_test,
-        contains_vol= contains_vol,
-        contains_USD=contains_USD)          
+for i in range(5):
+    try:
+        for modeltype, tupla in models_dict.items():
+            best_model_dict, contains_vol, contains_USD = tupla
+            generate_and_save_samples(
+                best_model_dict=best_model_dict,
+                modeltype= modeltype,
+                insample_data=df,
+                oos_data=df_test,
+                contains_vol= contains_vol,
+                contains_USD=contains_USD)          
+    # this cell sometimes crashes unexpectedly - just run again
+        break
+    except AttributeError:
+        print(f"Fail {i}, try again")
+
 
