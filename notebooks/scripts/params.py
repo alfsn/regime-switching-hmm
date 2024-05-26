@@ -28,7 +28,7 @@ def get_params():
     # all downloadable tickers
     yaml_data["tickerlist"] = [yaml_data["index"]] + yaml_data["stockslist"].copy()
 
-    yaml_data["synth_index"] = yaml_data["index"].replace("^", "") + "_USD"
+    yaml_data["synth_index"] = yaml_data["index"].replace("^", "") + "_FX"
     # all assets - includes synthethic index
     yaml_data["assetlist"] = [yaml_data["synth_index"]] + yaml_data["tickerlist"].copy()
 
