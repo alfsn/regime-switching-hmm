@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[16]:
+# In[31]:
 
 
 import numpy as np
@@ -17,13 +17,13 @@ import pickle
 import warnings
 
 
-# In[17]:
+# In[32]:
 
 
 np.random.seed(42)
 
 
-# In[18]:
+# In[33]:
 
 
 from scripts.params import get_params
@@ -32,7 +32,7 @@ from scripts.aux_functions import save_as_pickle
 params = get_params()
 
 
-# In[19]:
+# In[34]:
 
 
 dataroute = params["dataroute"]
@@ -42,7 +42,7 @@ dumproute = params["dumproute"]
 
 # ## Data Retrieval
 
-# In[20]:
+# In[35]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -55,7 +55,7 @@ with open(filename, "rb") as handle:
 # This section only uses log_rets as y variables. See:
 # https://github.com/alfsn/regime-switching-hmm/issues/35
 
-# In[21]:
+# In[36]:
 
 
 # Define the range of p and q values
@@ -65,21 +65,21 @@ q_values = [0, 1, 2, 3]  # Example: q values
 # all models with q=0 are exclusively ARCH (non-GARCH)
 
 
-# In[22]:
+# In[37]:
 
 
 models = {}
 predict = {}
 
 
-# In[23]:
+# In[38]:
 
 
 best_aic = {}
 best_bic = {}
 
 
-# In[24]:
+# In[39]:
 
 
 def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -99,7 +99,7 @@ def check_best_aic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[25]:
+# In[40]:
 
 
 def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
@@ -119,7 +119,7 @@ def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
             }
 
 
-# In[26]:
+# In[41]:
 
 
 # Estimate ARMA-ARCH and ARMA-GARCH models for different p and q values
@@ -186,7 +186,7 @@ print(f"nonconverged: {nonconverged_models}")
 
 # # Residuals
 
-# In[27]:
+# In[42]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -195,7 +195,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[28]:
+# In[43]:
 
 
 def generate_GARCH_samples_residuals(
@@ -271,7 +271,7 @@ def generate_GARCH_samples_residuals(
     return forecasts, residuals
 
 
-# In[29]:
+# In[44]:
 
 
 forecasts_dict={"aic":{}, "bic":{}}
@@ -289,7 +289,7 @@ for criterion, dictionary in zip(["aic", "bic"], [best_aic, best_bic]):
         residuals_dict[criterion][stock]=residuals     
 
 
-# In[30]:
+# In[45]:
 
 
 for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
