@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[19]:
+# In[37]:
 
 
 import numpy as np
@@ -17,21 +17,21 @@ import pickle
 import warnings
 
 
-# In[20]:
+# In[38]:
 
 
 logging.captureWarnings(True)
 hmm.logging.disable(level=80)
 
 
-# In[21]:
+# In[39]:
 
 
 random_state = 42
 np.random.seed(random_state)
 
 
-# In[22]:
+# In[40]:
 
 
 from scripts.params import get_params
@@ -42,7 +42,7 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[23]:
+# In[41]:
 
 
 dataroute = params["dataroute"]
@@ -50,7 +50,7 @@ resultsroute = params["resultsroute"]
 dumproute = params["dumproute"]
 
 
-# In[24]:
+# In[42]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -61,7 +61,7 @@ with open(filename, "rb") as handle:
 
 # ## HMM Training
 
-# In[25]:
+# In[43]:
 
 
 range_states = range(1, 11)
@@ -70,7 +70,7 @@ emptydf.fillna(np.inf, inplace=True)
 results_dict_df = {stock: emptydf for stock in params["assetlist"]}
 
 
-# In[26]:
+# In[44]:
 
 
 param_dict = {
@@ -81,7 +81,7 @@ param_dict = {
 }
 
 
-# In[27]:
+# In[45]:
 
 
 def fit_hmm_model(
@@ -127,7 +127,7 @@ def fit_hmm_model(
     return results_dict_df
 
 
-# In[28]:
+# In[46]:
 
 
 results_dict_df_univ = fit_hmm_model(
@@ -135,7 +135,7 @@ results_dict_df_univ = fit_hmm_model(
 )
 
 
-# In[29]:
+# In[47]:
 
 
 def select_best_model(
@@ -172,7 +172,7 @@ def select_best_model(
     return aic_best_model, bic_best_model
 
 
-# In[30]:
+# In[48]:
 
 
 aic_best_model_univ, bic_best_model_univ = select_best_model(
@@ -187,7 +187,7 @@ aic_best_model_univ, bic_best_model_univ = select_best_model(
 
 # # Generating out of sample data
 
-# In[31]:
+# In[49]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -196,7 +196,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[32]:
+# In[50]:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
@@ -204,7 +204,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[33]:
+# In[51]:
 
 
 def generate_HMM_samples_residuals(model, insample_data, oos_data):
@@ -306,7 +306,7 @@ def generate_HMM_samples_residuals(model, insample_data, oos_data):
     return probabilities, forecasts, residuals, counter
 
 
-# In[34]:
+# In[52]:
 
 
 def generate_and_save_samples(
@@ -371,7 +371,7 @@ def generate_and_save_samples(
     )
 
 
-# In[35]:
+# In[53]:
 
 
 models_dict = {
@@ -384,7 +384,7 @@ models_dict = {
 }
 
 
-# In[36]:
+# In[54]:
 
 
 for criterion, type_dict in models_dict.items():

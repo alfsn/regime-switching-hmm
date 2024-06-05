@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[24]:
+# In[46]:
 
 
 import numpy as np
@@ -19,14 +19,14 @@ import pickle
 import warnings
 
 
-# In[25]:
+# In[47]:
 
 
 from pomegranate.distributions import Normal
 from pomegranate.hmm import DenseHMM
 
 
-# In[26]:
+# In[48]:
 
 
 random_state = 42
@@ -34,7 +34,7 @@ np.random.seed(random_state)
 logging.captureWarnings(True)
 
 
-# In[27]:
+# In[49]:
 
 
 from scripts.params import get_params
@@ -50,7 +50,7 @@ params = get_params()
 
 # ## Data Retrieval
 
-# In[28]:
+# In[50]:
 
 
 dataroute = params["dataroute"]
@@ -58,7 +58,7 @@ resultsroute = params["resultsroute"]
 dumproute = params["dumproute"]
 
 
-# In[29]:
+# In[51]:
 
 
 name = f'finaldf_train_{params["tablename"]}.pickle'
@@ -67,15 +67,9 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# In[30]:
-
-
-df.head()
-
-
 # ## HMM Training
 
-# In[31]:
+# In[52]:
 
 
 range_states = range(1, 16)
@@ -84,7 +78,7 @@ emptydf.fillna(np.inf, inplace=True)
 results_dict_df = {stock: emptydf for stock in params["assetlist"]}
 
 
-# In[32]:
+# In[53]:
 
 
 def from_df_to_reshaped(data: pd.DataFrame):
@@ -93,7 +87,7 @@ def from_df_to_reshaped(data: pd.DataFrame):
     return data_reshaped
 
 
-# In[33]:
+# In[54]:
 
 
 def GaussianHMM(data_reshaped: np.ndarray, n_state: int):
@@ -103,7 +97,7 @@ def GaussianHMM(data_reshaped: np.ndarray, n_state: int):
     return res
 
 
-# In[34]:
+# In[55]:
 
 
 def n_params(res: pm.hmm.dense_hmm.DenseHMM):
@@ -116,7 +110,7 @@ def n_params(res: pm.hmm.dense_hmm.DenseHMM):
     return n_params
 
 
-# In[35]:
+# In[56]:
 
 
 def get_aic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
@@ -128,7 +122,7 @@ def get_aic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
     return aic
 
 
-# In[36]:
+# In[57]:
 
 
 def get_bic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
@@ -139,7 +133,7 @@ def get_bic(res: pm.hmm.dense_hmm.DenseHMM, data: np.ndarray):
     return bic
 
 
-# In[37]:
+# In[58]:
 
 
 def select_best(data: pd.DataFrame, max_states=15):
@@ -167,7 +161,7 @@ def select_best(data: pd.DataFrame, max_states=15):
     return aic, bic
 
 
-# In[38]:
+# In[59]:
 
 
 def find_best_all_assets(
@@ -190,7 +184,7 @@ def find_best_all_assets(
     return best
 
 
-# In[39]:
+# In[60]:
 
 
 for i in range(5):
@@ -205,7 +199,7 @@ for i in range(5):
         
 
 
-# In[40]:
+# In[61]:
 
 
 for i in range(5):
@@ -221,7 +215,7 @@ for i in range(5):
 
 # # Generating out of sample data
 
-# In[41]:
+# In[62]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -230,7 +224,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[42]:
+# In[63]:
 
 
 def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
@@ -238,7 +232,7 @@ def return_residuals(actual: pd.DataFrame, forecasts: pd.DataFrame):
     return residuals
 
 
-# In[43]:
+# In[64]:
 
 
 def generate_samples_residuals(n_state, insample_data, oos_data):
@@ -300,7 +294,7 @@ def generate_samples_residuals(n_state, insample_data, oos_data):
         
 
 
-# In[44]:
+# In[65]:
 
 
 def generate_and_save_samples(
@@ -361,7 +355,7 @@ def generate_and_save_samples(
         )
 
 
-# In[45]:
+# In[66]:
 
 
 models_dict = {
@@ -370,7 +364,7 @@ models_dict = {
 }
 
 
-# In[46]:
+# In[67]:
 
 
 for i in range(5):

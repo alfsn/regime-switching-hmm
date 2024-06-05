@@ -16,19 +16,23 @@ def get_params():
     index = yaml_data["index"]
     yaml_data["tablename"] = f"""{tablename_prefix}_{index}"""
 
-    yaml_data["stockslist"] = []
-
-    # only stock tickers - excludes index
+    yaml_data["locallist"] = []
+    yaml_data["foreignlist"] = []
     for stock, lista in yaml_data["stocksdict"].items():
         local = lista[1]
         ext = lista[0]
-        yaml_data["stockslist"].append(local)
-        yaml_data["stockslist"].append(ext)
+    yaml_data["locallist"].append(local)  # only local currency items
+    yaml_data["foreignlist"].append(ext)  # only ADRs
+
+    # only stock tickers - excludes index
+    yaml_data["stockslist"] = []
+    yaml_data["stockslist"].append(local)
+    yaml_data["stockslist"].append(ext)
 
     # all downloadable tickers
     yaml_data["tickerlist"] = [yaml_data["index"]] + yaml_data["stockslist"].copy()
 
-    yaml_data["synth_index"] = yaml_data["index"].replace("^", "") + "_USD"
+    yaml_data["synth_index"] = yaml_data["index"].replace("^", "") + "_FX"
     # all assets - includes synthethic index
     yaml_data["assetlist"] = [yaml_data["synth_index"]] + yaml_data["tickerlist"].copy()
 
@@ -52,7 +56,9 @@ def get_params():
     model_graphs = []
     for model in yaml_data["model_list"]:
         for dtype in ["forecasts", "residuals"]:
-            yaml_data[f"{model}_{dtype}"] = os.path.join(yaml_data[f"{dtype}graphsroute"], f"{model}")
+            yaml_data[f"{model}_{dtype}"] = os.path.join(
+                yaml_data[f"{dtype}graphsroute"], f"{model}"
+            )
             model_graphs.append(yaml_data[f"{model}_{dtype}"])
 
     yaml_data["directories"] = [

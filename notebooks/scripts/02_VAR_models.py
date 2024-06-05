@@ -3,7 +3,7 @@
 
 # ## Startup
 
-# In[1]:
+# In[30]:
 
 
 import numpy as np
@@ -18,7 +18,7 @@ import os
 import pickle
 
 
-# In[2]:
+# In[31]:
 
 
 import warnings
@@ -26,13 +26,13 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-# In[3]:
+# In[32]:
 
 
 np.random.seed(42)
 
 
-# In[4]:
+# In[33]:
 
 
 from scripts.params import get_params
@@ -41,7 +41,7 @@ from scripts.aux_functions import generate_columns, save_as_pickle
 params = get_params()
 
 
-# In[5]:
+# In[34]:
 
 
 dataroute = params["dataroute"]
@@ -51,7 +51,7 @@ dumproute = params["dumproute"]
 
 # ## Data Retrieval
 
-# In[6]:
+# In[35]:
 
 
 name = f"""finaldf_train_{params["tablename"]}.pickle"""
@@ -65,7 +65,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[7]:
+# In[36]:
 
 
 def generate_VAR_samples_residuals(
@@ -110,7 +110,7 @@ def generate_VAR_samples_residuals(
     return forecasts, residuals
 
 
-# In[8]:
+# In[37]:
 
 
 def estimate_best_residuals(
@@ -142,7 +142,7 @@ def estimate_best_residuals(
     return best_lag, forecasts, residuals
 
 
-# In[9]:
+# In[38]:
 
 
 best_lags = {
@@ -211,7 +211,7 @@ for criterion in ["aic", "bic"]:
         )
 
 
-# In[10]:
+# In[39]:
 
 
 for crit, d in best_residuals.items():

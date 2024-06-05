@@ -1,6 +1,8 @@
 import os
 import pickle
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sb
 
 
 def generate_columns(stock: str, contains_vol: bool, contains_USD: bool):
@@ -88,11 +90,80 @@ def subset_of_columns(df: pd.DataFrame, substring: str, exclude: str = None):
 
 
 def clean_modelname(name: str, substring_to_replace: str, tablename: str):
-    clean = name.replace(f"{substring_to_replace}", ""
-                 ).replace(".pickle", ""
-                           ).replace("best", ""
-                                     ).replace(tablename, ""
-                                               ).replace("__", "_"
-                                                         ).replace("__", "_")
-    clean = clean[:-1] if clean.endswith("_") else clean # avoids ending in "_"
+    clean = (
+        name.replace(f"{substring_to_replace}", "")
+        .replace(".pickle", "")
+        .replace("best", "")
+        .replace(tablename, "")
+        .replace("__", "_")
+        .replace("__", "_")
+    )
+    clean = clean[:-1] if clean.endswith("_") else clean  # avoids ending in "_"
     return clean
+
+
+def plot_forecasts(df, forecasts_by_stock, stock, top_k):
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    log_rets = df[f"{stock}_log_rets"]
+
+    other_fcast = pd.DataFrame()
+    for i in top_k:
+        other_fcast = pd.concat(
+            [other_fcast, subset_of_columns(forecasts_by_stock[stock], i)],
+            axis=1,
+            join="outer",
+        )
+
+    sb.lineplot(data=other_fcast, markers=True)
+    sb.lineplot(data=log_rets, markers=True, label="Actual Returns", linewidth=1.1, c="black")
+
+    plt.title(f"Forecasts Plot {stock} - Top {len(top_k)} forecasts", fontsize=16)
+    plt.xlabel("Date", fontsize=14)
+    plt.ylabel("Values", fontsize=14)
+    plt.xticks(rotation=45)
+    plt.grid(True, linestyle="--", linewidth=0.5)
+
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels, title="Series", loc="upper left", bbox_to_anchor=(1, 1))
+    plt.tight_layout()
+
+    return fig
+
+
+def plot_residuals(df, stock, show=True, return_fig=False):
+  """
+  Plots the residuals for a given stock.
+
+  Args:
+      df (pandas.DataFrame): The dataframe containing the data.
+      stock (str): The name of the stock.
+      show (bool, optional): Whether to display the plot directly. Defaults to True.
+      return_fig (bool, optional): Whether to return the figure object. Defaults to False.
+
+  Returns:
+      plt.Figure (optional): The figure object containing the plot (if return_fig is True).
+  """
+
+  fig, ax = plt.subplots(figsize=(12, 6))  # Create the figure and axis
+
+  sb.lineplot(data=df, markers=True, ax=ax)  # Plot residuals on the axis
+
+  # Add title, labels, and formatting
+  plt.title(f"Residuals Plot {stock}", fontsize=16)
+  plt.xlabel("Date", fontsize=14)
+  plt.ylabel("Values", fontsize=14)
+  plt.xticks(rotation=45)
+  plt.grid(True, linestyle="--", linewidth=0.5)
+  plt.axhline(y=0, color="black", linestyle="--", linewidth=1.5, label="Zero Error")
+
+  handles, labels = ax.get_legend_handles_labels()
+  ax.legend(handles, labels, title="Series", loc="upper left", bbox_to_anchor=(1, 1))
+
+  plt.tight_layout()
+
+  # Handle show and return options
+  if show:
+    plt.show()  # Display the plot
+  if return_fig:
+    return fig  # Return the figure object

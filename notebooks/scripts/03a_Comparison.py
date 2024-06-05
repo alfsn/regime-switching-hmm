@@ -4,7 +4,7 @@
 # # Comparison
 # 
 
-# In[55]:
+# In[1]:
 
 
 import pandas as pd
@@ -15,7 +15,7 @@ import pickle
 pd.set_option("display.max_columns", None)
 
 
-# In[56]:
+# In[2]:
 
 
 from scripts.params import get_params
@@ -24,13 +24,13 @@ from scripts.aux_functions import get_all_results_matching, subset_of_columns, c
 params = get_params()
 
 
-# In[57]:
+# In[3]:
 
 
 from scripts.epftoolbox_dm_gw import DM, plot_multivariate_DM_test, GW, plot_multivariate_GW_test
 
 
-# In[58]:
+# In[4]:
 
 
 dataroute = params["dataroute"]
@@ -41,14 +41,14 @@ dmroute=params["dmroute"]
 gwroute=params["gwroute"]
 
 
-# In[59]:
+# In[5]:
 
 
 start_test = params["start_test"]
 local_suffix = params["local_suffix"]
 
 
-# In[60]:
+# In[6]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -59,107 +59,125 @@ with open(filename, "rb") as handle:
 df_test.index=pd.to_datetime(df_test.index.copy())
 
 
-# In[61]:
+# In[7]:
 
 
-all_forecasts = get_all_results_matching(params["resultsroute"], ["best_forecasts"])
+all_forecasts = get_all_results_matching(params["resultsroute"], ["best_forecast"])
 all_residuals = get_all_results_matching(params["resultsroute"], ["best_residuals"])
 
 
-# In[62]:
+# In[8]:
 
 
-def get_only_log_rets(dict_with_dfs: dict, stock: str):
-    if type(dict_with_dfs[stock]) == pd.Series:
-        # univariate models are saved as series
-        df = pd.DataFrame(dict_with_dfs[stock])
-
-    else:
-        try:
-            # multivariate models are saved as dataframes
-            df = pd.DataFrame(dict_with_dfs[stock][f"{stock}_log_rets"])
-        except:  # TODO: SACAR ESTO! Es un chanchullo pq hay algunas que son guardadas como None
-            pass
-    return df
+def open_pickle_route(route:str):
+    with open(route, "rb") as file:
+        dictionary = pickle.load(file)
+    return dictionary
 
 
-# In[63]:
+# In[9]:
 
 
-def create_df_from_results_dict(results_dict:dict, substring_to_replace:str):
-    created_df = pd.DataFrame()
-
-    for name, dir in results_dict.items():
-        dict_with_dfs = pd.read_pickle(dir)
-        print(name)
-
-        for stock in dict_with_dfs.keys():
-            df = get_only_log_rets(dict_with_dfs, stock)
-
-            modelname = clean_modelname(name, substring_to_replace, tablename=params["tablename"])
-
-            df.columns = [modelname + "_" + stock]
-
-            created_df = pd.merge(
-                created_df, df, left_index=True, right_index=True, how="outer"
-            )
-
-    created_df.index = pd.to_datetime(created_df.index)
-    created_df = created_df[created_df.index > start_test]
-    return created_df
+def create_prefix(picklename:str):
+    picklename=picklename.replace(f"""{params["tablename"]}_""", "").replace(".pickle", "").replace("_residuals", "").replace("_forecasts", "").replace("best", "")
+    return picklename
 
 
-# In[64]:
+# In[10]:
 
 
-forecasts_df = create_df_from_results_dict(all_forecasts, "forecasts")
+def concat_dictionary(dictionary:dict, prefix:str):
+    colname_list=[]
+    df_list=[]
+    for key, value in dictionary.items():
+        value.index = pd.to_datetime(value.index)
+        value = subset_of_columns(value, "log_rets", "USD")
+        
+        df_list.append(value)
+        
+        colname = prefix + key
+        colname_list.append(colname)
+    
+    pickledf = pd.concat(df_list, axis=1, join="outer")
+    pickledf.columns = colname_list
+    
+    return pickledf
 
 
-# In[65]:
+# In[11]:
 
 
-forecasts_df = pd.concat([forecasts_df, subset_of_columns(df_test, "log_rets")])
+def aggregate_single_pickle(picklename:str, pickleroute:str):
+    prefix = create_prefix(picklename)
+    dictionary = open_pickle_route(pickleroute)
+    pickledf = concat_dictionary(dictionary, prefix)
+    return pickledf
 
 
-# In[66]:
+# In[12]:
 
 
-residual_df = create_df_from_results_dict(all_residuals, "residuals")
+def aggregate_dict(dictionary:dict):
+    pickledf_list=[]
+    for picklename, pickleroute in dictionary.items():
+        pickledf = aggregate_single_pickle(picklename, pickleroute)
+        pickledf_list.append(pickledf)
+    aggdf = pd.concat(pickledf_list, axis=1, join="outer")
+    
+    return aggdf
 
 
-# In[67]:
+# In[13]:
+
+
+forecasts = aggregate_dict(all_forecasts)
+residuals = aggregate_dict(all_residuals)
+
+
+# In[14]:
 
 
 lower_date=pd.to_datetime(params["start_test"])+pd.Timedelta(days=1)
 higher_date=pd.to_datetime(params["end_test"])-pd.Timedelta(days=1)
-residual_df=residual_df[lower_date:higher_date].copy()
+
+forecasts_df=forecasts[lower_date:higher_date].copy()
+residual_df=residuals[lower_date:higher_date].copy()
 df_test = df_test[lower_date:higher_date].copy()
-residual_df.head()
 
 
-# In[68]:
-
-
-# estadisticos de nans
-((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
-
-
-# In[69]:
+# In[15]:
 
 
 # estadisticos de nans
-((forecasts_df.isna().sum(axis=0) / len(forecasts_df.index)) * 100).nlargest(10)
+nans_forecasts=((forecasts_df.isna().sum(axis=0) / len(forecasts_df.index)) * 100).nlargest(10)
+assert nans_forecasts.iloc[0]<5, "Forecast NANs above 5%"
+nans_forecasts
+
+
+# In[16]:
+
+
+# estadisticos de nans
+nans_residual=((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
+assert nans_residual.iloc[0]<5, "Forecast NANs above 5%"
+nans_residual
 
 
 # ## Separating in different stocks
 
-# In[70]:
+# In[17]:
+
+
+params["assetlist"]
+
+
+# In[18]:
 
 
 def separate_by_stock(df:pd.DataFrame):
      stock_dict={}
 
-     for stock in params["tickerlist"]:
+     for stock in params["assetlist"]:
           if params["local_suffix"] in stock:
                stock_dict[stock]= subset_of_columns(residual_df, stock)
           else:
@@ -168,14 +186,14 @@ def separate_by_stock(df:pd.DataFrame):
      return stock_dict      
 
 
-# In[71]:
+# In[19]:
 
 
 forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
-# In[72]:
+# In[20]:
 
 
 for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts", "residuals"]):
@@ -184,7 +202,7 @@ for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts"
         pickle.dump(df_clean, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[73]:
+# In[21]:
 
 
 def delete_in_column_names(df:pd.DataFrame, string:str):
@@ -196,7 +214,7 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[74]:
+# In[22]:
 
 
 for stock in forecasts_by_stock.keys():
@@ -211,7 +229,7 @@ for stock in forecasts_by_stock.keys():
                             path=dmroute)
 
 
-# In[75]:
+# In[23]:
 
 
 best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
@@ -242,47 +260,76 @@ for stock, dataframe in residuals_by_stock.items():
     best_models_by_stock[stock]= (metrics_df, best_dict)
 
 
-# In[76]:
+# In[24]:
 
 
 print(params["tickerlist"][0])
 best_models_by_stock[params["tickerlist"][0]][1]
 
 
-# In[77]:
+# In[25]:
 
 
 best_models_by_stock[params["tickerlist"][0]][0]
 
 
-# In[78]:
+# In[26]:
 
 
 best_models_by_stock[params["tickerlist"][0]][0].rank(axis=1)
 
 
-# In[79]:
+# In[27]:
 
 
-agg_df=(pd.DataFrame().reindex_like(best_models_by_stock[params["tickerlist"][0]][0]))
+def create_agg_df(list_to_include:list):
+    agg_df=(pd.DataFrame().reindex_like(best_models_by_stock[params["tickerlist"][0]][0]))
 
-for asset in params["tickerlist"]:
-    ranks = best_models_by_stock[asset][0].rank(axis=1)
-    agg_df = agg_df.add(ranks, fill_value=0)
-    
-agg_df
+    for asset in list_to_include:
+        ranks = best_models_by_stock[asset][0].rank(axis=1)
+        agg_df = agg_df.add(ranks, fill_value=0)
+    agg_df = agg_df/len(list_to_include)
+        
+    agg_df.rank(axis=1, method="average").astype(int)
+    display(agg_df)
+    return agg_df
 
 
-# In[80]:
+# In[28]:
+
+
+agg_df = create_agg_df(params["tickerlist"]) # all assets
+
+
+# In[29]:
 
 
 agg_df.to_csv(os.path.join(resultsroute, f"""aggregate_results_df_{params["tablename"]}.csv"""))
 
 
-# In[81]:
+# In[30]:
 
 
 criterion="mse"
 print(f"Best overall performance by {criterion}")
 agg_df.T.nsmallest(3, f"{criterion}").index.to_list()
+
+
+# In[31]:
+
+
+agg_fx_df = create_agg_df(params["foreignlist"]+[params["synth_index"]])
+
+
+# In[32]:
+
+
+agg_local_df = create_agg_df(params["foreignlist"]+[params["index"]]) 
+
+
+# In[33]:
+
+
+agg_fx_df.to_csv(os.path.join(resultsroute, f"""ONLY_FX_agg_results_{params["tablename"]}.csv"""))
+agg_local_df.to_csv(os.path.join(resultsroute, f"""ONLY_LOCAL_agg_results_{params["tablename"]}.csv"""))
 
