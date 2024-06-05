@@ -98,7 +98,7 @@ for ticker in params["tickerlist"]:
         fig.savefig(os.path.join(graphsroute, "residuals", model_type, f"{ticker}.png"))
 
 
-# In[11]:
+# In[10]:
 
 
 for ticker in params["tickerlist"]:
