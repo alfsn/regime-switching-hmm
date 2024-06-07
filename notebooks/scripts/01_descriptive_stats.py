@@ -79,7 +79,8 @@ sb.set_palette(sb.color_palette(palette='deep'))
 
 
 for column in log_rets_list:
-    fig=df[column].plot(title=column).get_figure()
+    fig=df[column].plot(title=column
+                        ).get_figure()
     fig.savefig(os.path.join(descriptivegraphsroute, f"{column}_log_rets.png"))
     plt.close()
 
@@ -88,20 +89,31 @@ for column in log_rets_list:
 
 
 for column in vol_list:
-    fig=df[column].plot(title=column).get_figure()
+    fig=df[column].plot(title=column).get_figure() 
     fig.savefig(os.path.join(descriptivegraphsroute, f"{column}_gk_vol.png"))
+    plt.close()
+
+
+# In[10]:
+
+
+for column in vol_list:
+    fig=df[column].plot(title=column, 
+                        ylim=(0, 0.225) # these limits are set so as that all are in same scale as arg
+                        ).get_figure() 
+    fig.savefig(os.path.join(descriptivegraphsroute, f"{column}_gk_vol_AR_comparison.png"))
     plt.close()
 
 
 # ### Autocorrelograms
 
-# In[10]:
+# In[11]:
 
 
 acf_lags=252
 
 
-# In[11]:
+# In[12]:
 
 
 def save_acf(column, path):
@@ -121,7 +133,7 @@ def save_acf(column, path):
     plt.close()
 
 
-# In[12]:
+# In[13]:
 
 
 for column in log_rets_list:
@@ -131,7 +143,7 @@ for column in log_rets_list:
                  f"{column}_acf_log_rets.png"))
 
 
-# In[13]:
+# In[14]:
 
 
 for column in vol_list:
@@ -141,7 +153,7 @@ for column in vol_list:
                  f"{column}_acf_gk_vol.png"))
 
 
-# In[14]:
+# In[15]:
 
 
 def save_pacf(column, path):
@@ -165,7 +177,7 @@ def save_pacf(column, path):
     plt.close()
 
 
-# In[15]:
+# In[16]:
 
 
 for column in log_rets_list:
@@ -175,7 +187,7 @@ for column in log_rets_list:
                  f"{column}_pacf_log_rets.png"))
 
 
-# In[16]:
+# In[17]:
 
 
 for column in vol_list:
@@ -185,7 +197,7 @@ for column in vol_list:
                  f"{column}_pacf_gk_vol.png"))
 
 
-# In[17]:
+# In[18]:
 
 
 def save_hist_normal(column, path):
@@ -208,7 +220,7 @@ def save_hist_normal(column, path):
     plt.close()
 
 
-# In[18]:
+# In[19]:
 
 
 for column in log_rets_list:
@@ -219,7 +231,7 @@ for column in log_rets_list:
             f"{column}_histogram.png"))
 
 
-# In[19]:
+# In[20]:
 
 
 for column in vol_list:
@@ -230,7 +242,7 @@ for column in vol_list:
             f"{column}_vol_histogram.png"))
 
 
-# In[20]:
+# In[21]:
 
 
 def analyze_skew_kurt(dataframe):
@@ -245,7 +257,7 @@ def analyze_skew_kurt(dataframe):
     return results
 
 
-# In[21]:
+# In[22]:
 
 
 analyze_skew_kurt(df[log_rets_list].fillna(0))
