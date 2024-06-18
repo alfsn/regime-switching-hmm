@@ -7,3 +7,4 @@ notebook
 yfinance
 arch
 seaborn
+pomegranate
