@@ -16,18 +16,21 @@ def get_params():
     index = yaml_data["index"]
     yaml_data["tablename"] = f"""{tablename_prefix}_{index}"""
 
-    yaml_data["locallist"] = []
-    yaml_data["foreignlist"] = []
+    locallist = []
+    foreignlist = []
+    stockslist = []
     for stock, lista in yaml_data["stocksdict"].items():
         local = lista[1]
         ext = lista[0]
-    yaml_data["locallist"].append(local)  # only local currency items
-    yaml_data["foreignlist"].append(ext)  # only ADRs
+        locallist.append(local)  # only local currency items
+        foreignlist.append(ext)  # only ADRs
 
     # only stock tickers - excludes index
-    yaml_data["stockslist"] = []
-    yaml_data["stockslist"].append(local)
-    yaml_data["stockslist"].append(ext)
+    stockslist = foreignlist.copy() + locallist.copy()
+
+    yaml_data["foreignlist"] = foreignlist.copy()
+    yaml_data["locallist"] = locallist.copy()
+    yaml_data["stockslist"] = stockslist.copy()
 
     # all downloadable tickers
     yaml_data["tickerlist"] = [yaml_data["index"]] + yaml_data["stockslist"].copy()
