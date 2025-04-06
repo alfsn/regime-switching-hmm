@@ -148,13 +148,19 @@ df_test = df_test[lower_date:higher_date].copy()
 # In[15]:
 
 
+(forecasts_df.isna().sum(axis=0) / len(forecasts_df.index) * 100).nlargest()
+
+
+# In[16]:
+
+
 # estadisticos de nans
 nans_forecasts=((forecasts_df.isna().sum(axis=0) / len(forecasts_df.index)) * 100).nlargest(10)
 assert nans_forecasts.iloc[0]<5, "Forecast NANs above 5%"
 nans_forecasts
 
 
-# In[16]:
+# In[ ]:
 
 
 # estadisticos de nans
@@ -165,13 +171,13 @@ nans_residual
 
 # ## Separating in different stocks
 
-# In[17]:
+# In[ ]:
 
 
 params["assetlist"]
 
 
-# In[18]:
+# In[ ]:
 
 
 def separate_by_stock(df:pd.DataFrame):
@@ -186,14 +192,14 @@ def separate_by_stock(df:pd.DataFrame):
      return stock_dict      
 
 
-# In[19]:
+# In[ ]:
 
 
 forecasts_by_stock=separate_by_stock(forecasts_df)
 residuals_by_stock=separate_by_stock(residual_df)
 
 
-# In[20]:
+# In[ ]:
 
 
 for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts", "residuals"]):
@@ -202,7 +208,7 @@ for df_clean, name in zip([forecasts_by_stock, residuals_by_stock], ["forecasts"
         pickle.dump(df_clean, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[21]:
+# In[ ]:
 
 
 def delete_in_column_names(df:pd.DataFrame, string:str):
@@ -214,7 +220,7 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[22]:
+# In[ ]:
 
 
 for stock in forecasts_by_stock.keys():
@@ -229,7 +235,7 @@ for stock in forecasts_by_stock.keys():
                             path=dmroute)
 
 
-# In[23]:
+# In[ ]:
 
 
 best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
@@ -260,26 +266,26 @@ for stock, dataframe in residuals_by_stock.items():
     best_models_by_stock[stock]= (metrics_df, best_dict)
 
 
-# In[24]:
+# In[ ]:
 
 
 print(params["tickerlist"][0])
 best_models_by_stock[params["tickerlist"][0]][1]
 
 
-# In[25]:
+# In[ ]:
 
 
 best_models_by_stock[params["tickerlist"][0]][0]
 
 
-# In[26]:
+# In[ ]:
 
 
 best_models_by_stock[params["tickerlist"][0]][0].rank(axis=1)
 
 
-# In[27]:
+# In[ ]:
 
 
 def create_agg_df(list_to_include:list):
@@ -295,19 +301,19 @@ def create_agg_df(list_to_include:list):
     return agg_df
 
 
-# In[28]:
+# In[ ]:
 
 
 agg_df = create_agg_df(params["tickerlist"]) # all assets
 
 
-# In[29]:
+# In[ ]:
 
 
 agg_df.to_csv(os.path.join(resultsroute, f"""aggregate_results_df_{params["tablename"]}.csv"""))
 
 
-# In[30]:
+# In[ ]:
 
 
 criterion="mse"
@@ -315,21 +321,27 @@ print(f"Best overall performance by {criterion}")
 agg_df.T.nsmallest(3, f"{criterion}").index.to_list()
 
 
-# In[31]:
+# In[ ]:
 
 
 agg_fx_df = create_agg_df(params["foreignlist"]+[params["synth_index"]])
 
 
-# In[32]:
+# In[ ]:
 
 
 agg_local_df = create_agg_df(params["foreignlist"]+[params["index"]]) 
 
 
-# In[33]:
+# In[ ]:
 
 
 agg_fx_df.to_csv(os.path.join(resultsroute, f"""ONLY_FX_agg_results_{params["tablename"]}.csv"""))
 agg_local_df.to_csv(os.path.join(resultsroute, f"""ONLY_LOCAL_agg_results_{params["tablename"]}.csv"""))
+
+
+# In[ ]:
+
+
+
 
