@@ -250,7 +250,7 @@ def generate_GARCH_samples_residuals(
             first_obs=end_loc - rolling_window + i, last_obs=end_loc + i, disp="off"
         )
 
-        future_x = full_data.iloc[end_loc + i : end_loc + i + 1, 1:2]
+        future_x = full_data.iloc[end_loc + i -1 : end_loc + i, 1:2]
 
         forecast = res.forecast(
             horizon=1,
@@ -258,7 +258,7 @@ def generate_GARCH_samples_residuals(
             method="simulation",
             x=future_x
         ).mean.iloc[0]
-        
+
         forecasts[forecast.name] = forecast
 
     forecasts = pd.DataFrame(forecasts).T
@@ -301,7 +301,7 @@ for criterion, dictionary in zip(["aic", "bic"], [best_aic, best_bic]):
 
 
 
-# In[15]:
+# In[ ]:
 
 
 for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
