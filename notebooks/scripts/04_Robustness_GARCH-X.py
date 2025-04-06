@@ -194,7 +194,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[13]:
+# In[ ]:
 
 
 def generate_GARCH_samples_residuals(
@@ -250,10 +250,15 @@ def generate_GARCH_samples_residuals(
             first_obs=end_loc - rolling_window + i, last_obs=end_loc + i, disp="off"
         )
 
-        forecast = res.forecast(
-            horizon=1, start=date_of_first_forecast, method="simulation"
-        ).mean.iloc[0]
+        future_x = full_data.iloc[end_loc + i : end_loc + i + 1, 1:2]
 
+        forecast = res.forecast(
+            horizon=1,
+            start=date_of_first_forecast,
+            method="simulation",
+            x=future_x
+        ).mean.iloc[0]
+        
         forecasts[forecast.name] = forecast
 
     forecasts = pd.DataFrame(forecasts).T
