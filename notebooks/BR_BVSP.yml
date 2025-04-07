@@ -42,4 +42,4 @@ stocksdict:
 
 local_suffix: ".SA"
 
-model_list: ["GARCH", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]
+model_list: ["GARCH", "GARCH-X", "HMM_univ", "HMM_multiv", "VAR_multiv", "VAR_with_vol"]

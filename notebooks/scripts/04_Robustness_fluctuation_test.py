@@ -4,18 +4,20 @@
 # # Comparison
 # 
 
-# In[1]:
+# In[ ]:
 
 
 import pandas as pd
 import numpy as np
 import os
 import pickle
+import matplotlib.pyplot as plt
+from scipy.stats import norm
 
 pd.set_option("display.max_columns", None)
 
 
-# In[2]:
+# In[ ]:
 
 
 from scripts.params import get_params
@@ -24,13 +26,7 @@ from scripts.aux_functions import get_all_results_matching, subset_of_columns, c
 params = get_params()
 
 
-# In[3]:
-
-
-from scripts.epftoolbox_dm_gw import DM, plot_multivariate_DM_test, GW, plot_multivariate_GW_test
-
-
-# In[4]:
+# In[ ]:
 
 
 dataroute = params["dataroute"]
@@ -41,14 +37,14 @@ dmroute=params["dmroute"]
 gwroute=params["gwroute"]
 
 
-# In[5]:
+# In[ ]:
 
 
 start_test = params["start_test"]
 local_suffix = params["local_suffix"]
 
 
-# In[6]:
+# In[ ]:
 
 
 name = f'finaldf_test_{params["tablename"]}.pickle'
@@ -59,14 +55,14 @@ with open(filename, "rb") as handle:
 df_test.index=pd.to_datetime(df_test.index.copy())
 
 
-# In[7]:
+# In[ ]:
 
 
 all_forecasts = get_all_results_matching(params["resultsroute"], ["best_forecast"])
 all_residuals = get_all_results_matching(params["resultsroute"], ["best_residuals"])
 
 
-# In[8]:
+# In[ ]:
 
 
 def open_pickle_route(route:str):
@@ -75,7 +71,7 @@ def open_pickle_route(route:str):
     return dictionary
 
 
-# In[9]:
+# In[ ]:
 
 
 def create_prefix(picklename:str):
@@ -83,7 +79,7 @@ def create_prefix(picklename:str):
     return picklename
 
 
-# In[10]:
+# In[ ]:
 
 
 def concat_dictionary(dictionary:dict, prefix:str):
@@ -104,7 +100,7 @@ def concat_dictionary(dictionary:dict, prefix:str):
     return pickledf
 
 
-# In[11]:
+# In[ ]:
 
 
 def aggregate_single_pickle(picklename:str, pickleroute:str):
@@ -114,7 +110,7 @@ def aggregate_single_pickle(picklename:str, pickleroute:str):
     return pickledf
 
 
-# In[12]:
+# In[ ]:
 
 
 def aggregate_dict(dictionary:dict):
@@ -127,14 +123,14 @@ def aggregate_dict(dictionary:dict):
     return aggdf
 
 
-# In[13]:
+# In[ ]:
 
 
 forecasts = aggregate_dict(all_forecasts)
 residuals = aggregate_dict(all_residuals)
 
 
-# In[14]:
+# In[ ]:
 
 
 lower_date=pd.to_datetime(params["start_test"])+pd.Timedelta(days=1)
@@ -145,37 +141,7 @@ residual_df=residuals[lower_date:higher_date].copy()
 df_test = df_test[lower_date:higher_date].copy()
 
 
-# In[15]:
-
-
-(forecasts_df.isna().sum(axis=0) / len(forecasts_df.index) * 100).nlargest()
-
-
-# In[16]:
-
-
-# estadisticos de nans
-nans_forecasts=((forecasts_df.isna().sum(axis=0) / len(forecasts_df.index)) * 100).nlargest(10)
-assert nans_forecasts.iloc[0]<5, "Forecast NANs above 5%"
-nans_forecasts
-
-
-# In[ ]:
-
-
-# estadisticos de nans
-nans_residual=((residual_df.isna().sum(axis=0) / len(residual_df.index)) * 100).nlargest(10)
-assert nans_residual.iloc[0]<5, "Forecast NANs above 5%"
-nans_residual
-
-
 # ## Separating in different stocks
-
-# In[ ]:
-
-
-params["assetlist"]
-
 
 # In[ ]:
 
@@ -220,128 +186,92 @@ def delete_in_column_names(df:pd.DataFrame, string:str):
     return df
 
 
-# In[ ]:
-
-
-for stock in forecasts_by_stock.keys():
-    print(stock)
-    real_values=subset_of_columns(df_test, f"{stock}_log_rets")
-    forecasts=delete_in_column_names(forecasts_by_stock[stock].fillna(0), f"_{stock}")   
-
-    plot_multivariate_DM_test(real_price=real_values, 
-                            forecasts=forecasts.fillna(0), 
-                            title=f"DM test {stock}",
-                            savefig=True,
-                            path=dmroute)
-
+# # Fluctiation test
 
 # In[ ]:
 
 
-best_models_by_stock={stock:None for stock in residuals_by_stock.keys()}
+def fluctuation_test(real_values, forecast_1, forecast_2, window=60, loss="mse", significance_level=0.05):
+    """
+    Giacomini-Rossi Fluctuation Test for forecast comparison with symmetric critical value bands.
 
-for stock, dataframe in residuals_by_stock.items():
-    dataframe = delete_in_column_names(dataframe, f"_{stock}")
-    metrics_df = pd.DataFrame(index=["mse", "meanabs", "medianabs"])
+    Returns:
+        pd.DataFrame with test_stat, upper_crit, lower_crit
+    """
+    assert len(real_values) == len(forecast_1) == len(forecast_2), "Input series must have equal length"
 
-    for column in dataframe.columns:
-        single_model=pd.DataFrame(dataframe[column])
-        
-        metrics_df.loc["mse", column] = (
-            (single_model**2).mean().mean()
-        )
-        metrics_df.loc["meanabs", column] = (
-            single_model.abs().mean().mean()
-        )
-        metrics_df.loc["medianabs", column] = (
-            (single_model.abs()).median().median()
-        )
-    metrics_df = metrics_df * 100
-    metrics_df = subset_of_columns(metrics_df, substring="", exclude="USD")
-    
-    best_dict={}
-    for criterion in metrics_df.index:
-        best_dict[criterion] = metrics_df.iloc[metrics_df.index==criterion].idxmin(axis="columns").values[0]
-        
-    best_models_by_stock[stock]= (metrics_df, best_dict)
+    # Compute loss differential
+    if loss == "mse":
+        d_t = (real_values - forecast_1)**2 - (real_values - forecast_2)**2
+    elif loss == "mae":
+        d_t = np.abs(real_values - forecast_1) - np.abs(real_values - forecast_2)
+    else:
+        raise ValueError("Unsupported loss function.")
 
+    test_stats = []
+    upper_crit = []
+    lower_crit = []
+    dates = []
 
-# In[ ]:
+    z = norm.ppf(1 - significance_level / 2)  # two-sided
 
+    for i in range(window, len(d_t)):
+        d_window = d_t.iloc[i - window:i]
+        mean = d_window.mean()
+        std = d_window.std(ddof=1)
+        stat = np.sqrt(window) * mean / std
 
-print(params["tickerlist"][0])
-best_models_by_stock[params["tickerlist"][0]][1]
+        test_stats.append(stat)
+        upper_crit.append(z)
+        lower_crit.append(-z)
+        dates.append(d_t.index[i])
+
+    return pd.DataFrame({
+        "test_stat": test_stats,
+        "upper_crit": upper_crit,
+        "lower_crit": lower_crit
+    }, index=dates)
 
 
 # In[ ]:
 
 
-best_models_by_stock[params["tickerlist"][0]][0]
+def plot_fluctuation_test(result_df, title="", savefig=False, path="", filename="fluctuation_test"):
+    plt.figure(figsize=(10, 5))
+    plt.plot(result_df.index, result_df["test_stat"], label="Test Statistic", color="blue")
+    plt.axhline(y=result_df["upper_crit"].iloc[0], linestyle="--", color="red", label="Upper Critical Value")
+    plt.axhline(y=result_df["lower_crit"].iloc[0], linestyle="--", color="green", label="Lower Critical Value")
+    plt.fill_between(result_df.index, result_df["lower_crit"], result_df["upper_crit"], color="gray", alpha=0.1, label="Non-rejection Region")
+    plt.title(title)
+    plt.xlabel("Date")
+    plt.ylabel("Fluctuation Test Statistic")
+    plt.legend()
+    plt.tight_layout()
+
+    if savefig:
+        plt.savefig(os.path.join(path, filename + ".png"), dpi=300)
+
+    plt.show()
 
 
 # In[ ]:
 
 
-best_models_by_stock[params["tickerlist"][0]][0].rank(axis=1)
+subset_to_test=["^BVSP", "BVSP_FX"]
 
 
 # In[ ]:
 
 
-def create_agg_df(list_to_include:list):
-    agg_df=(pd.DataFrame().reindex_like(best_models_by_stock[params["tickerlist"][0]][0]))
+for stock in subset_to_test:
+    real_values = subset_of_columns(df_test, f"{stock}_log_rets").squeeze()
+    forecasts = delete_in_column_names(forecasts_by_stock[stock].fillna(0), f"_{stock}")
 
-    for asset in list_to_include:
-        ranks = best_models_by_stock[asset][0].rank(axis=1)
-        agg_df = agg_df.add(ranks, fill_value=0)
-    agg_df = agg_df/len(list_to_include)
-        
-    agg_df.rank(axis=1, method="average").astype(int)
-    display(agg_df)
-    return agg_df
-
-
-# In[ ]:
-
-
-agg_df = create_agg_df(params["tickerlist"]) # all assets
-
-
-# In[ ]:
-
-
-agg_df.to_csv(os.path.join(resultsroute, f"""aggregate_results_df_{params["tablename"]}.csv"""))
-
-
-# In[ ]:
-
-
-criterion="mse"
-print(f"Best overall performance by {criterion}")
-agg_df.T.nsmallest(3, f"{criterion}").index.to_list()
-
-
-# In[ ]:
-
-
-agg_fx_df = create_agg_df(params["foreignlist"]+[params["synth_index"]])
-
-
-# In[ ]:
-
-
-agg_local_df = create_agg_df(params["foreignlist"]+[params["index"]]) 
-
-
-# In[ ]:
-
-
-agg_fx_df.to_csv(os.path.join(resultsroute, f"""ONLY_FX_agg_results_{params["tablename"]}.csv"""))
-agg_local_df.to_csv(os.path.join(resultsroute, f"""ONLY_LOCAL_agg_results_{params["tablename"]}.csv"""))
-
-
-# In[ ]:
-
-
-
+    columns = forecasts.columns
+    for i in range(len(columns)):
+        for j in range(i+1, len(columns)):
+            model1, model2 = columns[i], columns[j]
+            result = fluctuation_test(real_values, forecasts[model1], forecasts[model2], window=60, loss="mse")
+            title = f"Fluctuation Test: {stock} {model1} vs {model2}"
+            plot_fluctuation_test(result, title=title, savefig=True, path=gwroute, filename=f"{stock}_{model1}_vs_{model2}")
 

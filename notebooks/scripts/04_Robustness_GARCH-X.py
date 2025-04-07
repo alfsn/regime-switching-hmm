@@ -8,7 +8,6 @@
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 import arch
 
@@ -51,9 +50,7 @@ with open(filename, "rb") as handle:
     df = pickle.load(handle)
 
 
-# ## GARCH Training
-# This section only uses log_rets as y variables. See:
-# https://github.com/alfsn/regime-switching-hmm/issues/35
+# ## GARCHX Training
 
 # In[6]:
 
@@ -122,12 +119,13 @@ def check_best_bic(key, model, previous_best: float, p: int, q: int, dist: str):
 # In[11]:
 
 
-# Estimate ARMA-ARCH and ARMA-GARCH models for different p and q values
+# Estimate ARMA-ARCHX and ARMA-GARCHX models for different p and q values
 nonconverged_models = 0
 ok_models = 0
 
 for key in params["assetlist"]:
     returns = df[f"{key}_log_rets"]
+    exog_rets=df["USD_log_rets"]
 
     models[key] = {}
     predict[key] = {}
@@ -146,6 +144,7 @@ for key in params["assetlist"]:
                     p=p,
                     q=q,
                     dist=dist,
+                    x=exog_rets,
                     rescale=False,
                 )
                 results = model.fit(
@@ -163,7 +162,7 @@ for key in params["assetlist"]:
                 check_best_aic(
                     key=key,
                     model=results,
-                    previous_best=best_aic[key]["aic"],
+                    previous_best=best_aic[key]["aic"],                    
                     p=p,
                     q=q,
                     dist=dist,
@@ -171,7 +170,7 @@ for key in params["assetlist"]:
                 check_best_bic(
                     key=key,
                     model=results,
-                    previous_best=best_bic[key]["bic"],
+                    previous_best=best_bic[key]["bic"],                    
                     p=p,
                     q=q,
                     dist=dist,
@@ -195,7 +194,7 @@ with open(filename, "rb") as handle:
     df_test = pickle.load(handle)
 
 
-# In[13]:
+# In[ ]:
 
 
 def generate_GARCH_samples_residuals(
@@ -233,13 +232,14 @@ def generate_GARCH_samples_residuals(
     forecasts = {}
 
     model = arch.arch_model(
-        y=full_data,
+        y=full_data.iloc[:, 0],
         mean="AR",
         lags=1,
         vol="Garch",
         p=model_dict["p"],
         q=model_dict["q"],
         dist=model_dict["dist"],
+        x=full_data.iloc[:, 1], 
         rescale=False,
     )
 
@@ -250,14 +250,19 @@ def generate_GARCH_samples_residuals(
             first_obs=end_loc - rolling_window + i, last_obs=end_loc + i, disp="off"
         )
 
+        future_x = full_data.iloc[end_loc + i -1 : end_loc + i, 1:2]
+
         forecast = res.forecast(
-            horizon=1, start=date_of_first_forecast, method="simulation"
+            horizon=1,
+            start=date_of_first_forecast,
+            method="simulation",
+            x=future_x
         ).mean.iloc[0]
 
         forecasts[forecast.name] = forecast
 
     forecasts = pd.DataFrame(forecasts).T
-    forecasts.columns = full_data.columns
+    forecasts.columns = pd.DataFrame(full_data.iloc[:, 0]).columns
 
     pct_nan = forecasts.iloc[:, 0].isna().sum() / len(forecasts.index) * 100
 
@@ -279,24 +284,31 @@ residuals_dict={"aic":{}, "bic":{}}
 
 for criterion, dictionary in zip(["aic", "bic"], [best_aic, best_bic]):
     for stock in dictionary.keys():
+        columns=[f"{stock}_log_rets", "USD_log_rets"]
         forecasts, residuals = generate_GARCH_samples_residuals(
-            dictionary[stock],
-            pd.DataFrame(df[f"{stock}_log_rets"]),
-            pd.DataFrame(df_test[f"{stock}_log_rets"])
+            model_dict=dictionary[stock],
+            insample_data=pd.DataFrame(df[columns]),
+            oos_data=pd.DataFrame(df_test[columns])
             )
 
         forecasts_dict[criterion][stock]=forecasts
         residuals_dict[criterion][stock]=residuals     
 
 
-# In[15]:
+# In[ ]:
+
+
+
+
+
+# In[ ]:
 
 
 for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
     save_as_pickle(
         data=forecasts_dict[criterion],
         resultsroute=params["resultsroute"],
-        model_type="GARCH",
+        model_type="GARCH-X",
         tablename=params["tablename"],
         criterion=criterion,
         type_save="forecasts",
@@ -305,7 +317,7 @@ for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
     save_as_pickle(
         data=residuals_dict[criterion],
         resultsroute=params["resultsroute"],
-        model_type="GARCH",
+        model_type="GARCH-X",
         tablename=params["tablename"],
         criterion=criterion,
         type_save="residuals"
@@ -314,7 +326,7 @@ for criterion, bestmodels in zip(["aic", "bic"], [best_aic, best_bic]):
     save_as_pickle(
         data=bestmodels,
         resultsroute=params["resultsroute"],
-        model_type="GARCH",
+        model_type="GARCH-X",
         tablename=params["tablename"],
         criterion=criterion,
         type_save="models"
